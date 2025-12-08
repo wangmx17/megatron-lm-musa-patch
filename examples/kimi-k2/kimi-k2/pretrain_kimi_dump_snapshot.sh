@@ -60,7 +60,7 @@ mkdir -p $TB_PATH
 WB_PATH=$WORK_HOME/wandb/$EXPNAME
 mkdir -p $WB_PATH
 
-export DUMP_MEMORY_SNAPSHOT=0
+export DUMP_MEMORY_SNAPSHOT=1
 export MEMORY_SNAPSHOT_PATH=$WORK_HOME/mem_snapshot/$RDZV_ID
 mkdir -p $MEMORY_SNAPSHOT_PATH
 export RDZV_ID=$RDZV_ID
@@ -110,10 +110,11 @@ MODEL_ARGS=(
 
 # 24414062 1T
 TRAINING_ARGS=(
+    --train-iters 2
     --seed 42 
     --micro-batch-size $MICRO_BATCH_SIZE 
     --global-batch-size $GLOBAL_BATCH_SIZE  
-    --train-samples 24414062 
+    # --train-samples 24414062 
     --init-method-std  0.006 # 0.02 in HF config, but 0.006 in the paper 
     --use-mcore-models 
     # --no-gradient-accumulation-fusion 
@@ -155,7 +156,7 @@ WARMUP_SAMPLES=$((WARMUP_STEPS * GLOBAL_BATCH_SIZE))
 LEARNING_RATE_ARGS=(
     --lr 2.2e-4 
     --lr-decay-style cosine 
-    --lr-warmup-samples ${WARMUP_SAMPLES} 
+    # --lr-warmup-samples ${WARMUP_SAMPLES} 
     --min-lr 1.5e-6 
     --initial-loss-scale 65536 
     --min-loss-scale 1.0 
@@ -183,10 +184,10 @@ DATA_ARGS=(
 EVAL_AND_LOGGING_ARGS=(
     --log-interval 1
     --log-throughput
-    --save-interval 100000 
+    # --save-interval 100000 
     --eval-interval 1 
-    --save $CHECKPOINT_PATH 
-    --load $CHECKPOINT_PATH 
+    # --save $CHECKPOINT_PATH 
+    # --load $CHECKPOINT_PATH 
     --eval-iters 0
     --tensorboard-dir $TB_PATH 
 )

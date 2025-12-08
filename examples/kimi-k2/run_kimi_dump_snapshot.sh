@@ -26,7 +26,7 @@ set -u
   LOG_FILE=./output/$CURRENT_TIME/$EXPNAME.log
   # TOKENIZED_MODEL=/home/dist/musa_tmp_share/dataset/llama3_tokenizer  
   TOKENIZED_MODEL=/mnt/si0003568lza/default/train_test/yehua/dataset/llama2_dataset/DeepSeek-V3
-  SCRIPT_FILE=./kimi-k2/pretrain_kimi.sh
+  SCRIPT_FILE=./kimi-k2/pretrain_kimi_dump_snapshot.sh
   RDZV_ID=$CURRENT_TIME
 set +u
 
