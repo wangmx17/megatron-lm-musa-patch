@@ -5,10 +5,10 @@ echo $CURRENT_TIME
 mkdir -p ./output/$CURRENT_TIME
 
 TP_SIZE=${TP_SIZE:-1}
-PP_SIZE=${PP_SIZE:-1}
+PP_SIZE=${PP_SIZE:-4}
 EP_SIZE=${EP_SIZE:-8}
 # WORLD_SIZE=${WORLD_SIZE:-16}
-WORLD_SIZE=8
+WORLD_SIZE=32
 MICRO_BATCH_SIZE=${MICRO_BATCH_SIZE:-1}
 NUM_MICROBATCHES=${NUM_MICROBATCHES:-32}
 (( DP_SIZE = $WORLD_SIZE / ($TP_SIZE * $PP_SIZE) ))
@@ -26,8 +26,7 @@ set -u
   TOKENIZED_MODEL=/mnt/si0003568lza/default/train_test/yehua/dataset/llama2_dataset/DeepSeek-V3
   HOSTFILE=./hostfile
   LOG_FILE=$WORK_HOME/output/$CURRENT_TIME/$EXPNAME.log
-  TOKENIZED_MODEL=${TOKENIZED_MODEL:-"/home/dist/lama2_dataset/tokenizer.model"}
-  SCRIPT_FILE=./deepseek-v2-lite/run_pretrain_deepseekv2_musa_deepep.sh
+  SCRIPT_FILE=./deepseek-v2-lite/run_pretrain_deepseekv2_musa_ep_overlap.sh
   RDZV_ID=$CURRENT_TIME
   MASTER_PORT=${MASTER_PORT:-12345}
 set +u

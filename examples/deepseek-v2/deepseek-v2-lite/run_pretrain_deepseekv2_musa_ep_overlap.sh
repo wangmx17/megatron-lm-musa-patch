@@ -95,7 +95,7 @@ DISTRIBUTED_ARGS=(
 )
 
 MODEL_ARGS=(
-    --num-layers 2  # 60
+    --num-layers 16  # 60
     --hidden-size 5120
     --num-attention-heads 128
     --seq-length 4096
@@ -182,8 +182,8 @@ LEARNING_RATE_ARGS=(
 MODEL_PARALLEL_ARGS=(
 	--tensor-model-parallel-size $TP_SIZE
 	--pipeline-model-parallel-size $PP_SIZE
-    # --num-virtual-stages-per-pipeline-rank 2
-    # --no-overlap-p2p-communication
+    --num-virtual-stages-per-pipeline-rank 2
+    --no-overlap-p2p-communication
 )
 
 MIXED_PRECISION_ARGS=(
@@ -219,8 +219,7 @@ MOE_LAYER_FREQ="([0]*1+[1]*${NUM_LAYERS_MINUS_ONE})*1"
 MOE_ARGS=(
     --num-experts ${MOE_NUM_EXPERTS}
     --expert-model-parallel-size $EP_SIZE
-    --moe-token-dispatcher-type flex
-    --moe-enable-deepep
+    --moe-token-dispatcher-type alltoall
     --moe-router-score-function softmax
     --moe-router-num-groups $EP_SIZE
     --moe-router-group-topk ${MOE_ROUTER_GROUP_TOPK}
@@ -238,7 +237,10 @@ MOE_ARGS=(
     --moe-layer-freq "$MOE_LAYER_FREQ"
     --moe-grouped-gemm
     --moe-permute-fusion
+    --overlap-moe-expert-parallel-comm
     --moe-router-dtype fp32
+    # --moe-enable-deepep
+    # --moe-token-dispatcher-type flex
 )
 
 TRANSFORMER_ENGINE_ARGS=(

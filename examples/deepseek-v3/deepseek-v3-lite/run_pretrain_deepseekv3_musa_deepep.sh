@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Runs the "175B" parameter model
+
+# Please change the following envrioment variables
+# base on the cluster configuration
 set -u
   WORK_HOME=$1
   PATCH_HOME=$2
@@ -13,47 +17,32 @@ set -u
   GLOBAL_BATCH_SIZE=${10}
   TOKENIZED_MODEL=${11}
   RDZV_ID=${12}
-  MASTER_PORT=${13}
 set +u
-# export ENABLE_PROFILER=1
-# export PROFILER_FREQ=6
-# export PROFILER_WARMUP_STEPS=3
-# export PROFILER_ACTIVE_STEPS=3
-# export PROFILER_REPEAT_NUM=1
+export ENABLE_PROFILER=0
+export PROFILER_FREQ=4
 # export MUSA_LAUNCH_BLOCKING=1
-# export PROFILER_PROFILE_MEMORY=1
-
-export DIST_BACKEND=${DIST_BACKEND:-'nccl'}
-
 export OMP_NUM_THREADS=4
 export MUSA_VISIBLE_DEVICES=${MUSA_VISIBLE_DEVICES:-'0,1,2,3,4,5,6,7'}
 export MUSA_KERNEL_TIMEOUT=3200000
 export ACCELERATOR_BACKEND="musa"
 export MCCL_PROTOS=2
-export MCCL_ALGOS=1
-export MCCL_BUFFSIZE=20971520
-export MUSA_BLOCK_SCHEDULE_MODE=1
-export MCCL_IB_GID_INDEX=3
-export MCCL_NET_SHARED_BUFFERS=0
-export MOE_NUM_EXPERTS=${MOE_NUM_EXPERTS:-160}
-export MOE_ROUTER_GROUP_TOPK=${MOE_ROUTER_GROUP_TOPK:-3}
-
-# export MUSA_EXECUTION_TIMEOUT=20000000 # Recommended for use with zero-bubble
-export ENABLE_ZERO_BUBBLE=0 # if set 1, Enable zero_bubble
-
+export MCCL_CHECK_POINTERS=0
 export CUDA_DEVICE_MAX_CONNECTIONS=1
-# export MUSA_BLOCK_ARBITRATION_MODE=2
-export CPU_OPTIMIZER_PRECISION_AWARE_RECONFIG=${CPU_OPTIMIZER_PRECISION_AWARE_RECONFIG:-0}
+export MCCL_IB_GID_INDEX=3
+export MUSA_BLOCK_SCHEDULE_MODE=1
+export MCCL_ALGOS=1
+export MCCL_BUFFSIZE=20480000
 
 export USE_RECOMPUTE_VARIANCE=0
 export ENABLE_D2H_IN_PERMUTATION=0
 export NO_LOSS_REDUCE=0
 export USE_MUSA_MOE=1
-export USE_CE_ALLTOALL=1
+export USE_DEEPEP_ACE=1
+
+NUM_LAYERS=${NUM_LAYERS:-1}
 
 MEGATRON_PATH=${PATCH_HOME}/../Megatron-LM
 export PYTHONPATH=${MEGATRON_PATH}:${PATCH_HOME}:$PYTHONPATH
-export LD_LIBRARY_PATH=/usr/local/musa/lib:$LD_LIBRARY_PATH
 
 if [ ! -d "${MEGATRON_PATH}/build" ]; then
     cd "${MEGATRON_PATH}"
@@ -75,14 +64,14 @@ WB_PATH=$WORK_HOME/wandb/$EXPNAME
 mkdir -p $WB_PATH
 
 
-export NODE_ADDR=$(ip a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2;}'|tr -d "addr:"|head -n1 | cut -d '/' -f1) # tail for cuda/ head for musa
+export NODE_ADDR=$(ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2;}'|tr -d "addr:"|head -n 1) # tail for cuda/ head for musa
 export GPUS_PER_NODE=${GPUS_PER_NODE:-8}
 export NUM_NODES=$(cat $HOSTFILE | wc -l)
 export MASTER_ADDR=$(head -n1 $HOSTFILE | awk '{print $1;}')
 export NODE_RANK=$(awk -v node_addr="$NODE_ADDR" '{ranks[$1]=(FNR-1);} END {print ranks[node_addr];}' $HOSTFILE)
 export MASTER_PORT=${MASTER_PORT:-12356}
-
-echo "Distributed log_dir: $WORK_HOME/output_log/$RDZV_ID/$EXPNAME"
+# export MUSA_LAUNCH_BLOCKING=1
+# export MCCL_DEBUG=INFO
 
 DISTRIBUTED_ARGS=(
     --nproc_per_node $GPUS_PER_NODE
@@ -90,13 +79,26 @@ DISTRIBUTED_ARGS=(
     --node_rank $NODE_RANK
     --master_addr $MASTER_ADDR
     --master_port $MASTER_PORT
-    --log_dir $WORK_HOME/output_log/$RDZV_ID/$EXPNAME/$NODE_ADDR
-    --redirects ${LOG_REDIRECTS_LEVEL:-3}
+    --log_dir $WORK_HOME/output_log/$RDZV_ID/$EXPNAME/$NODE_RANK
+    --redirects 3
 )
+# Distributed args for epx
+if [ $USE_EPX -ne 0 ]; then
+    DISTRIBUTED_ARGS=(
+        --nproc_per_node $GPUS_PER_NODE
+        --nnodes $NUM_NODES
+        --node_rank $NODE_RANK
+        --master_addr $MASTER_ADDR
+        --master_port $MASTER_PORT
+        --log_dir $WORK_HOME/output_log/$RDZV_ID/$EXPNAME
+        --redirects 3
+        --logs-specs epxlog
+    )
+fi
 
 MODEL_ARGS=(
-    --num-layers 2  # 60
-    --hidden-size 5120
+    --num-layers ${NUM_LAYERS}  # 61
+    --hidden-size 7168
     --num-attention-heads 128
     --seq-length 4096
     --max-position-embeddings 4096
@@ -104,16 +106,14 @@ MODEL_ARGS=(
     --attention-dropout 0.0
     --hidden-dropout 0.0
     --disable-bias-linear
-    --vocab-size 102400
-    --ffn-hidden-size 12288  # 12288 for dense, but for sequentialMLP, moe-ffn-hidden-size=1536
+    --vocab-size 129280
+    --ffn-hidden-size 2048  # 18432 for groupGEMM; 2048 for sequentialMLP
     --position-embedding-type rope
     --no-position-embedding
     --swiglu
     --normalization RMSNorm
     --untie-embeddings-and-output-weights
-    # --cross-entropy-loss-fusion
     --rope-type yarn
-    --enable-experimental
 )
 
 # 24414062 1T
@@ -132,23 +132,13 @@ TRAINING_ARGS=(
     --sequence-parallel
     # --recompute-granularity full
     # --recompute-method block
-    # --recompute-num-layers 0
-    --distributed-backend $DIST_BACKEND
+    # --recompute-num-layers 1
+    --distributed-backend nccl
     --multi-latent-attention
     --qk-layernorm
-    # --overlap-grad-reduce
-    # --overlap-param-gather
-    # --overlap-param-gather-with-optimizer-step # only supported with interleaved pipeline parallelism
-    # --attn-recompute
-    # --recompute-variance
-    # --mlp-recompute
-    # --mla-rms-recompute
-    # --mlp-rms-recompute
-    # --optimizer-cpu-offload
-    # --optimizer-offload-fraction 1
-    # --use-precision-aware-optimizer # cpu offload must be precision-aware
-    # --overlap-cpu-optimizer-d2h-h2d
-    --tp-only-amax-red
+    # --disable-gloo-process-groups    # use for epx fault tolerance
+    # --distributed-timeout-minutes 10 # use for epx fault tolerance
+    --enable-experimental
 )
 
 MLA_ARGS=(
@@ -159,7 +149,6 @@ MLA_ARGS=(
     --v-head-dim 128
     --rotary-scaling-factor 1
 )
-
 REGULARIZATION_ARGS=(
     --weight-decay 0.1
     --adam-beta1 0.9
@@ -171,7 +160,7 @@ WARMUP_STEPS=2000
 WARMUP_SAMPLES=$((WARMUP_STEPS * GLOBAL_BATCH_SIZE))
 
 LEARNING_RATE_ARGS=(
-    --lr 1.5e-5
+    --lr 2.2e-4
     --lr-decay-style cosine
     --lr-warmup-samples ${WARMUP_SAMPLES}
     --min-lr 1.5e-6
@@ -182,8 +171,6 @@ LEARNING_RATE_ARGS=(
 MODEL_PARALLEL_ARGS=(
 	--tensor-model-parallel-size $TP_SIZE
 	--pipeline-model-parallel-size $PP_SIZE
-    # --num-virtual-stages-per-pipeline-rank 2
-    # --no-overlap-p2p-communication
 )
 
 MIXED_PRECISION_ARGS=(
@@ -198,7 +185,6 @@ DATA_ARGS=(
     --tokenizer-type NullTokenizer
     # --tokenizer-model ${TOKENIZED_MODEL}
     --split 1
-    #--dataloader-type mtepx  #default single
 )
 
 EVAL_AND_LOGGING_ARGS=(
@@ -212,33 +198,35 @@ EVAL_AND_LOGGING_ARGS=(
     --tensorboard-dir $TB_PATH
 )
 
-NUM_LAYERS=$(echo "${MODEL_ARGS[@]}" | grep -oP '(?<=--num-layers )\d+')
-NUM_LAYERS_MINUS_ONE=$((NUM_LAYERS - 1))
-MOE_LAYER_FREQ="([0]*1+[1]*${NUM_LAYERS_MINUS_ONE})*1"
+MOE_NUM_EXPERTS=${MOE_NUM_EXPERTS:-256}
+MOE_ROUTER_NUM_GROUPS=${MOE_ROUTER_NUM_GROUPS:-8}
+MOE_ROUTER_GROUP_TOPK=${MOE_ROUTER_GROUP_TOPK:-4}
+MOE_ROUTER_TOPK=${MOE_ROUTER_TOPK:-8}
 
 MOE_ARGS=(
-    --num-experts ${MOE_NUM_EXPERTS}
+    --num-experts $MOE_NUM_EXPERTS
     --expert-model-parallel-size $EP_SIZE
     --moe-token-dispatcher-type flex
     --moe-enable-deepep
-    --moe-router-score-function softmax
-    --moe-router-num-groups $EP_SIZE
-    --moe-router-group-topk ${MOE_ROUTER_GROUP_TOPK}
+    --moe-router-num-groups $MOE_ROUTER_NUM_GROUPS
+    --moe-router-group-topk $MOE_ROUTER_GROUP_TOPK
+    # --moe-noaux-gamma 1e-2 #1e-3
     --moe-router-load-balancing-type seq_aux_loss
-    --moe-router-topk 6
-    --moe-router-pre-softmax #deepseek use pre-softmax
-    --moe-router-topk-scaling-factor 16 # pre-softmax need scaling
-    --moe-aux-loss-coeff 3e-3
-    --moe-expert-capacity-factor 1
-    --moe-device-level-capacity
-    --moe-device-level-aux-loss-coeff 5e-2
-    --moe-comm-aux-loss-coeff 2e-2
-    --moe-ffn-hidden-size 1536
-    --moe-shared-expert-intermediate-size 3072
-    --moe-layer-freq "$MOE_LAYER_FREQ"
+    --moe-complementary-seq-aux-loss
+    --moe-router-topk $MOE_ROUTER_TOPK
+    --moe-router-score-function sigmoid #deepseek use sigmoid
+    --moe-router-norm-topk-prob #norm topk prob with sigmoid
+    --moe-router-topk-scaling-factor 2.5 # pre-softmax need scaling
+    --moe-ffn-hidden-size 2048
+    --moe-shared-expert-intermediate-size 2048
+    --moe-layer-freq "([1]*${NUM_LAYERS})"
     --moe-grouped-gemm
-    --moe-permute-fusion
+    --moe-router-enable-expert-bias
+    --moe-router-bias-update-rate 1e-3
     --moe-router-dtype fp32
+    --moe-aux-loss-coeff 1e-4
+    # --overlap-moe-expert-parallel-comm
+    --moe-permute-fusion
 )
 
 TRANSFORMER_ENGINE_ARGS=(
@@ -248,17 +236,13 @@ TRANSFORMER_ENGINE_ARGS=(
     --fp8-recipe mxfp8
 )
 
-# --moe-z-loss-coeff 1e-3
-# --moe-expert-capacity-factor 4.0
-# --moe-pad-expert-input-to-capacity
-# if [ -n "${WANDB_API_KEY}" ]; then
-#     EVAL_AND_LOGGING_ARGS+=(
-#         --wandb-project ${WANDB_PROJECT:-"Mixtral-Finetuning"}
-#         --wandb-exp-name ${WANDB_NAME:-"Mixtral_8x7B"}
-#     )
-# fi
+MULTI_TOKEN_PREDICTION_ARGS=(
+    --use-multi-token-prediction
+    --mtp-coeff 1e-4
+    --mtp-depth 1
+)
 
-cmd="torchrun ${DISTRIBUTED_ARGS[@]} $WORK_HOME/pretrain_deepseekv2.py \
+cmd="torchrun ${DISTRIBUTED_ARGS[@]} $WORK_HOME/pretrain_deepseekv3.py \
         ${MODEL_ARGS[@]} \
         ${TRAINING_ARGS[@]} \
         ${REGULARIZATION_ARGS[@]}
@@ -269,18 +253,19 @@ cmd="torchrun ${DISTRIBUTED_ARGS[@]} $WORK_HOME/pretrain_deepseekv2.py \
         ${MOE_ARGS[@]} \
         ${MLA_ARGS[@]} \
         ${EVAL_AND_LOGGING_ARGS[@]} \
-        ${TRANSFORMER_ENGINE_ARGS[@]}
+        ${TRANSFORMER_ENGINE_ARGS[@]} \
     "
+echo $cmd
 
 USE_EPX=${USE_EPX:-0}
 
-# run cmd directly
 if [ $USE_EPX -eq 0 ]; then
-  echo $cmd
   $cmd
   exit $?
 fi
 
 # run cmd with fault tolerance
-source "${PATCH_HOME}/examples/deepseek-v2/deepseek-v2-lite/fault_tolerance_function.sh"
+source "${PATCH_HOME}/examples/deepseek-v3/deepseek-v3-lite/fault_tolerance_function.sh"
 ft_training "$cmd"
+
+# msys profile -t musa --gpu-metrics-set=1 -o S5000-dsv3-cpu-offload-buffer --device 0
