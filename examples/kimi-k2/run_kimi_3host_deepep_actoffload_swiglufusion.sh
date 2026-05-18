@@ -5,9 +5,9 @@ echo $CURRENT_TIME
 mkdir -p ./output/$CURRENT_TIME
 
 TP_SIZE=1
-PP_SIZE=2
+PP_SIZE=3
 EP_SIZE=8
-WORLD_SIZE=16
+WORLD_SIZE=24
 MICRO_BATCH_SIZE=1
 NUM_MICROBATCHES=32
 (( DP_SIZE = $WORLD_SIZE / ($TP_SIZE * $PP_SIZE) ))
@@ -26,7 +26,7 @@ set -u
   LOG_FILE=./output/$CURRENT_TIME/$EXPNAME.log
   # TOKENIZED_MODEL=/home/dist/musa_tmp_share/dataset/llama3_tokenizer  
   TOKENIZED_MODEL=/mnt/si0003568lza/default/train_test/yehua/dataset/llama2_dataset/DeepSeek-V3
-  SCRIPT_FILE=./kimi-k2/pretrain_kimi_2host.sh
+  SCRIPT_FILE=./kimi-k2/pretrain_kimi_3host_deepep_actoffload_swiglufusion.sh
   RDZV_ID=$CURRENT_TIME
 set +u
 
