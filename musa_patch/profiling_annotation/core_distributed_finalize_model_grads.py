@@ -3,7 +3,7 @@ import os
 import megatron.core.distributed
 from typing import List, Optional
 import torch
-from megatron.core.process_groups_config import GradFinalizeProcessGroups
+from ..v016_pg_compat import GradFinalizeProcessGroups
 
 original_finalize_model_grads = megatron.core.distributed.finalize_model_grads
 
