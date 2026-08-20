@@ -15,6 +15,9 @@ import torch_musa
 from torch import Tensor, nn
 
 from megatron.core import parallel_state
+from megatron.core.models.common.embeddings.rope_utils import (
+    _get_thd_freqs_on_this_cp_rank,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +76,11 @@ def apply_rotary_pos_emb_bshd(t: Tensor, freqs: Tensor, rotary_interleaved: bool
 
 
 def apply_rotary_pos_emb_thd(
-    t: Tensor, cu_seqlens: Tensor, freqs: Tensor, rotary_interleaved: bool = False
+    t: Tensor,
+    cu_seqlens: Tensor,
+    freqs: Tensor,
+    rotary_interleaved: bool = False,
+    cp_group: torch.distributed.ProcessGroup = None,
 ) -> Tensor:
     """A baseline implementation of applying RoPE for `thd` format.
 
@@ -82,10 +89,29 @@ def apply_rotary_pos_emb_thd(
         cu_seqlens(Tensor):  Cumulative sum of sequence lengths in a batch for `t`,
         with shape [b + 1] and dtype torch.int32.
         freqs (Tensor): Rotary Positional embedding tensor freq is of shape [max_s, 1, 1, d]
+        cp_group (torch.distributed.ProcessGroup, optional): context-parallel group. When
+            provided (CP > 1), sequences are sharded across the CP ranks and `freqs` is
+            sliced to this rank's portion (Megatron-LM v0.16 behaviour).
 
     Returns:
         Tensor: Shape [t, h, d]. The input tensor after applying RoPE.
     """
+
+    if cp_group is not None and cp_group.size() > 1:
+        # v0.16: shard per-sequence lengths by cp_size and pick this rank's freqs slice.
+        cp_size = cp_group.size()
+        cp_rank = cp_group.rank()
+        seqlens = ((cu_seqlens[1:] - cu_seqlens[:-1]) // cp_size).tolist()
+        return torch.cat(
+            [
+                apply_rotary_pos_emb_bshd(
+                    x.unsqueeze(1),
+                    _get_thd_freqs_on_this_cp_rank(cp_rank, cp_size, x, freqs),
+                    rotary_interleaved=rotary_interleaved,
+                )
+                for x in torch.split(t, seqlens)
+            ]
+        ).squeeze(1)
 
     seqlens = (cu_seqlens[1:] - cu_seqlens[:-1]).tolist()
     return torch.cat(
@@ -133,7 +159,8 @@ def apply_rotary_pos_emb(
             return apply_rotary_pos_emb_bshd(t, freqs, rotary_interleaved=config.rotary_interleaved)
         else:
             return apply_rotary_pos_emb_thd(
-                t, cu_seqlens, freqs, rotary_interleaved=config.rotary_interleaved
+                t, cu_seqlens, freqs, rotary_interleaved=config.rotary_interleaved,
+                cp_group=cp_group,
             )
             
 # import megatron.core.models.common.embeddings.rotary_pos_embedding

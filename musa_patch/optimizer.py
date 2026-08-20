@@ -30,6 +30,7 @@ from megatron.core.distributed.param_and_grad_buffer import _ParamAndGradBuffer
 from megatron.core.transformer.module import MegatronModule
 from megatron.core.optimizer.distrib_optimizer import DistributedOptimizer
 from megatron.core.optimizer.grad_scaler import ConstantGradScaler, DynamicGradScaler
+from megatron.core.optimizer.muon import Muon
 from megatron.core.optimizer import (
     Float16OptimizerWithFloat16Params,
     FP32Optimizer,
@@ -50,6 +51,7 @@ def _get_megatron_optimizer_based_on_param_groups(
     data_parallel_group: Optional[torch.distributed.ProcessGroup] = None,
     data_parallel_group_gloo: Optional[torch.distributed.ProcessGroup] = None,
     data_parallel_group_idx: Optional[int] = None,
+    intra_dist_opt_group: Optional[torch.distributed.ProcessGroup] = None,
     distributed_optimizer_instance_id: Optional[int] = 0,
 ) -> MegatronOptimizer:
     """Get Megatron optimizer based on parameter groups.
@@ -172,6 +174,54 @@ def _get_megatron_optimizer_based_on_param_groups(
                 momentum=config.sgd_momentum,
             )
             init_state_fn = None
+        elif config.optimizer == 'muon':
+            # Ported from Megatron-LM v0.16 native _get_megatron_optimizer_based_on_param_groups.
+            qkv_split_shapes = None
+            for model_chunk in model_chunks:
+                num_attention_heads = model_chunk.config.num_attention_heads
+                num_query_groups = model_chunk.config.num_query_groups
+                kv_channels = model_chunk.config.kv_channels
+                if model_chunk.config.elementwise_attn_output_gate:
+                    qkv_split_shapes = [
+                        num_attention_heads // num_query_groups * kv_channels,
+                        num_attention_heads // num_query_groups * kv_channels,
+                        kv_channels,
+                        kv_channels,
+                    ]
+                else:
+                    qkv_split_shapes = [
+                        num_attention_heads // num_query_groups * kv_channels,
+                        kv_channels,
+                        kv_channels,
+                    ]
+                for name, param in model_chunk.named_parameters():
+                    if not param.requires_grad:
+                        continue
+                    if 'linear_qkv.weight' in name and len(param.shape) == 2:
+                        param.is_qkv = True
+
+            optimizer = Muon(param_groups,
+                             lr=config.lr, weight_decay=config.weight_decay,
+                             matched_adamw_rms=config.muon_matched_adamw_rms,
+                             momentum=config.muon_momentum,
+                             nesterov=config.muon_nesterov,
+                             ns_steps=config.muon_ns_steps,
+                             adamw_betas=(config.adam_beta1, config.adam_beta2),
+                             adamw_eps=config.adam_eps,
+                             qkv_split_shapes=qkv_split_shapes,
+                             muon_split_qkv=config.muon_split_qkv,
+                             muon_coefficient_type=config.muon_coefficient_type)
+
+            def init_state_fn(opt, config=None):
+                # not actually called when using distributed optimizer
+                for group in opt.param_groups:
+                    for p in group['params']:
+                        if len(opt.state[p]) == 0:
+                            if config is None or not config.use_precision_aware_optimizer:
+                                opt.state[p]['exp_avg'] = torch.zeros_like(p.data)
+                                opt.state[p]['exp_avg_sq'] = torch.zeros_like(p.data)
+                            else:
+                                opt.initialize_state(p)
         else:
             raise Exception('{} optimizer is not supported.'.format(config.optimizer))
     else:
@@ -219,6 +269,8 @@ def _get_megatron_optimizer_based_on_param_groups(
                 data_parallel_group_idx=data_parallel_group_idx,
                 distributed_optimizer_instance_id=distributed_optimizer_instance_id,
             )
+            # v0.16: reduce grad stats inside each dist-opt instance when >1 instance.
+            setattr(optimizer, 'grad_stats_parallel_group', intra_dist_opt_group)
         else:
             optimizer = Float16OptimizerWithFloat16Params(*optimizer_args)
             setattr(optimizer, 'grad_stats_parallel_group', model_parallel_group)
