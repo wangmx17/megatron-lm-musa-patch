@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 import logging
 
 import torch
-import torch_musa
 from torch import Tensor, nn
 
 from megatron.core import parallel_state
@@ -22,7 +21,7 @@ from megatron.core.models.common.embeddings.rope_utils import (
 logger = logging.getLogger(__name__)
 
 try:
-    from apex.transformer.functional import (
+    from apex.transformer.functional import (  # noqa: F401
         fused_apply_rotary_pos_emb,
         fused_apply_rotary_pos_emb_thd,
     )
@@ -120,7 +119,46 @@ def apply_rotary_pos_emb_thd(
             for x in torch.split(t, seqlens)
         ]
     ).squeeze(1)
-    
+
+
+def _torch_rope_bshd(t: Tensor, freqs: Tensor, rotary_interleaved: bool = False) -> Tensor:
+    freq = freqs
+    while freq.dim() > 2:
+        freq = freq.squeeze(1)
+    return torch.rope(t, freq, rotary_interleaved, False, False)
+
+
+def apply_rotary_pos_emb_thd_torch_rope(
+    t: Tensor,
+    cu_seqlens: Tensor,
+    freqs: Tensor,
+    rotary_interleaved: bool = False,
+    cp_group: torch.distributed.ProcessGroup = None,
+) -> Tensor:
+    """THD RoPE via torch.rope; CP slices freqs like the unfused path."""
+    if cp_group is not None and cp_group.size() > 1:
+        cp_size = cp_group.size()
+        cp_rank = cp_group.rank()
+        seqlens = ((cu_seqlens[1:] - cu_seqlens[:-1]) // cp_size).tolist()
+        return torch.cat(
+            [
+                _torch_rope_bshd(
+                    x.unsqueeze(1),
+                    _get_thd_freqs_on_this_cp_rank(cp_rank, cp_size, x, freqs),
+                    rotary_interleaved=rotary_interleaved,
+                )
+                for x in torch.split(t, seqlens)
+            ]
+        ).squeeze(1)
+    seqlens = (cu_seqlens[1:] - cu_seqlens[:-1]).tolist()
+    return torch.cat(
+        [
+            _torch_rope_bshd(x.unsqueeze(1), freqs[: x.size(0)], rotary_interleaved=rotary_interleaved)
+            for x in torch.split(t, seqlens)
+        ]
+    ).squeeze(1)
+
+
 def apply_rotary_pos_emb(
     t: Tensor,
     freqs: Tensor,
@@ -138,30 +176,25 @@ def apply_rotary_pos_emb(
     if cp_group is None:
         cp_group = parallel_state.get_context_parallel_group()
 
-    # assert cu_seqlens is None, "Only support cu_seqlens is None for now!"
-    if config.apply_rope_fusion and not HAVE_APPLY_ROPE_FUSION:
-        # setting apply_rope_fusion in config to False so that subsequent queries to this config also return False
-        config.apply_rope_fusion = False
-        if not getattr(apply_rotary_pos_emb, "printed_fused_warning", False):
-            logger.warning(
-                "Setting apply_rope_fusion to false because its implementation"
-                " is not included in Apex. Try upgrading to the latest version"
-            )
-            apply_rotary_pos_emb.printed_fused_warning = True
+    # Fusion uses torch.rope (Apex THD IMA on MUSA). Do not require Apex.
     if config.apply_rope_fusion:
         if cu_seqlens is None:
-            return torch.rope(t, freqs.squeeze(1).squeeze(1), rotary_interleaved=False, batch_first=False)
-            # return fused_apply_rotary_pos_emb(t, freqs, transpose_output_memory=True)
-        else:
-            return fused_apply_rotary_pos_emb_thd(t, cu_seqlens, freqs)
-    else:
-        if cu_seqlens is None:
-            return apply_rotary_pos_emb_bshd(t, freqs, rotary_interleaved=config.rotary_interleaved)
-        else:
-            return apply_rotary_pos_emb_thd(
-                t, cu_seqlens, freqs, rotary_interleaved=config.rotary_interleaved,
-                cp_group=cp_group,
+            return torch.rope(
+                t, freqs.squeeze(1).squeeze(1), rotary_interleaved=False, batch_first=False
             )
+        return apply_rotary_pos_emb_thd_torch_rope(
+            t,
+            cu_seqlens,
+            freqs,
+            rotary_interleaved=config.rotary_interleaved,
+            cp_group=cp_group,
+        )
+    if cu_seqlens is None:
+        return apply_rotary_pos_emb_bshd(t, freqs, rotary_interleaved=config.rotary_interleaved)
+    return apply_rotary_pos_emb_thd(
+        t, cu_seqlens, freqs, rotary_interleaved=config.rotary_interleaved,
+        cp_group=cp_group,
+    )
             
 # import megatron.core.models.common.embeddings.rotary_pos_embedding
 # megatron.core.models.common.embeddings.rotary_pos_embedding.apply_rotary_pos_emb = apply_rotary_pos_emb

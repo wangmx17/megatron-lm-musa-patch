@@ -75,6 +75,17 @@ def _install_flash_attn_cp_compat():
 
     _fai._flash_attn_varlen_forward = _patched_flash_attn_varlen_forward
 
+    # TE 2.5 path (musa_patch pins _flash_attn_2_6_0_plus=False) does not pass
+    # softcap; MUSA _flash_attn_varlen_backward requires it as a positional.
+    _orig_varlen_backward = getattr(_fai, "_flash_attn_varlen_backward", None)
+
+    def _patched_flash_attn_varlen_backward(*args, **kwargs):
+        kwargs.setdefault("softcap", 0.0)
+        return _orig_varlen_backward(*args, **kwargs)
+
+    if _orig_varlen_backward is not None:
+        _fai._flash_attn_varlen_backward = _patched_flash_attn_varlen_backward
+
     # TE binds the name under several aliases at import time; cover every one it may pick.
     for _alias in (
         "_flash_attn_varlen_fwd",
@@ -82,9 +93,16 @@ def _install_flash_attn_cp_compat():
     ):
         if getattr(_fai, _alias, None) is not None:
             setattr(_fai, _alias, _patched_flash_attn_varlen_forward)
+    for _alias in (
+        "_flash_attn_varlen_bwd",
+        "flash_attn_varlen_bwd",
+    ):
+        if getattr(_fai, _alias, None) is not None and _orig_varlen_backward is not None:
+            setattr(_fai, _alias, _patched_flash_attn_varlen_backward)
 
     logger.info(
-        "[musa_patch] installed flash-attn CP/THD compat wrapper on _flash_attn_varlen_forward"
+        "[musa_patch] installed flash-attn CP/THD compat wrapper on "
+        "_flash_attn_varlen_forward/_flash_attn_varlen_backward"
     )
 
 
