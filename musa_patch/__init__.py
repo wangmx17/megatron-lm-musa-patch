@@ -49,6 +49,7 @@ def patch_before_import_megatron():
     if int(os.getenv("USE_DEEPEP_ACE", 0)):
         from . import deepep_ace
     from . import ce_te_stride
+    from . import moe_router_fusion
 
     from . import core_pipeline_parallel_schedules
     from . import yarn_rotary_pos_embedding
