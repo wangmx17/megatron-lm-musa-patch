@@ -20,6 +20,24 @@ def patch_before_import_megatron():
     from packaging.version import Version as PkgVersion
     from transformer_engine.pytorch.attention import _flash_attn_version
     _flash_attn_version = PkgVersion("2.5.0")
+    # Doc #14: local rebind does not stick; mutate TE module flags and wrap
+    # thd_second_half_lse_correction so packed 2D / fp32 LSE matches MUSA kernels.
+    import transformer_engine.pytorch.attention as _te_attn_lse
+    _te_attn_lse._flash_attn_version = PkgVersion("2.5.0")
+    _te_attn_lse._flash_attn_2_5_7_plus = False
+    _te_attn_lse._flash_attn_2_6_0_plus = False
+    _te_attn_lse._flash_attn_2_7_0_plus = False
+    _flash_attn_version = _te_attn_lse._flash_attn_version
+    _orig_thd_lse = getattr(getattr(_te_attn_lse, "tex", None), "thd_second_half_lse_correction", None)
+    if _orig_thd_lse is not None:
+        def _thd_second_half_lse_correction(lse, lse_per_step, cu_seqlens, lse_packed):
+            if lse is not None and lse.dtype != torch.float64:
+                lse_d = lse.to(torch.float64)
+                out = _orig_thd_lse(lse_d, lse_per_step, cu_seqlens, lse_packed)
+                lse.copy_(lse_d.to(dtype=lse.dtype))
+                return out
+            return _orig_thd_lse(lse, lse_per_step, cu_seqlens, lse_packed)
+        _te_attn_lse.tex.thd_second_half_lse_correction = _thd_second_half_lse_correction
     # Import other necessary modules to patch
     # from . import transformer_config
     from . import dot_product_attention
