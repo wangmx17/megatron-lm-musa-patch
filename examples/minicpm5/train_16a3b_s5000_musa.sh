@@ -269,7 +269,6 @@ TRAINING_ARGS=(
   --init-method-std 0.02
   --use-mcore-models
   --no-bias-dropout-fusion
-  --no-bias-swiglu-fusion
   --distributed-backend nccl
   --use-distributed-optimizer
   --recompute-granularity full
