@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# MiniCPM5 16A3B / MTT S5000 launcher.
+# The validated old optimization stack is embedded here; no external stack
+# environment file is required.
+
+CURRENT_TIME=$(date "+%Y%m%d_%H%M%S")
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PATCH_REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+WORK_HOME="$(cd "${PATCH_REPO_ROOT}/../.." && pwd)"
+cd "${WORK_HOME}"
+
+PATCH_HOME=${PATCH_HOME:-"${PATCH_REPO_ROOT}"}
+MEGATRON_PATH=${MEGATRON_PATH:-"${WORK_HOME}/code/Megatron-LM"}
+PRETRAIN_FILE=${PRETRAIN_FILE:-"${SCRIPT_DIR}/pretrain_minicpm5_musa.py"}
+HOSTFILE=${HOSTFILE:-"${WORK_HOME}/hostfile"}
+DATA_PATH=${DATA_PATH:-"${WORK_HOME}/data/minicpm5_real_part00071_text_document"}
+TOKENIZED_MODEL=${TOKENIZED_MODEL:-"${WORK_HOME}/models/ckpt"}
+SCRIPT_FILE="${SCRIPT_DIR}/train_16a3b_s5000_musa.sh"
+SSH_PORT=${SSH_PORT:-62218}
+SSH_USER=${SSH_USER:-root}
+SSH_KEYFILE=${SSH_KEYFILE:-/mbzz_ssd/zman_mianbi_train/.ssh/id_ed25519_musa_multinode}
+
+# Validated old stack (worker31010, real data, 2026-09-02):
+# ACE/experimental DeepEP and bias-SwiGLU fusion intentionally remain disabled.
+export ENABLE_DEEPEP=${ENABLE_DEEPEP:-0}
+export ENABLE_CE_TE=${ENABLE_CE_TE:-1}
+export ENABLE_MANUAL_GC=${ENABLE_MANUAL_GC:-1}
+export ENABLE_ROPE_FUSION=${ENABLE_ROPE_FUSION:-1}
+export ENABLE_MOE_ROUTER_FUSION=${ENABLE_MOE_ROUTER_FUSION:-1}
+export ENABLE_GRAD_ACCUM_FUSION=${ENABLE_GRAD_ACCUM_FUSION:-1}
+export ENABLE_DEEPEP_ENV=${ENABLE_DEEPEP_ENV:-1}
+export ENABLE_SHARED_EXPERT_OVERLAP=${ENABLE_SHARED_EXPERT_OVERLAP:-0}
+export ENABLE_RMSNORM_FUSION=${ENABLE_RMSNORM_FUSION:-0}
+export MOE_DEEPEP_NUM_SMS=${MOE_DEEPEP_NUM_SMS:-56}
+export MUON_BATCH_NS=${MUON_BATCH_NS:-1}
+export MUON_BATCH_NS_MAX_B=${MUON_BATCH_NS_MAX_B:-32}
+export MCCL_MIN_NCHANNELS=${MCCL_MIN_NCHANNELS:-16}
+export MCCL_MAX_NCHANNELS=${MCCL_MAX_NCHANNELS:-16}
+export MCCL_BUFFSIZE=${MCCL_BUFFSIZE:-16777216}
+
+TP_SIZE=${TP_SIZE:-2}
+PP_SIZE=${PP_SIZE:-1}
+CP_SIZE=${CP_SIZE:-4}
+EP_SIZE=${EP_SIZE:-8}
+WORLD_SIZE=${WORLD_SIZE:-8}
+GPUS_PER_NODE=${GPUS_PER_NODE:-8}
+MICRO_BATCH_SIZE=${MICRO_BATCH_SIZE:-1}
+NUM_MICROBATCHES=${NUM_MICROBATCHES:-16}
+export TRAIN_ITERS=${TRAIN_ITERS:-60}
+export LR_WARMUP_ITERS=${LR_WARMUP_ITERS:-5}
+export SAVE_INTERVAL=${SAVE_INTERVAL:-999999}
+export SEQ_LENGTH=${SEQ_LENGTH:-65536}
+export MAX_POSITION_EMBEDDINGS=${MAX_POSITION_EMBEDDINGS:-${SEQ_LENGTH}}
+export ALLOW_RANDOM_INIT=${ALLOW_RANDOM_INIT:-1}
+export RESUME=${RESUME:-0}
+export OVERRIDE_OPT_PARAM_SCHEDULER=${OVERRIDE_OPT_PARAM_SCHEDULER:-0}
+export LOAD_DIR=${LOAD_DIR:-"${WORK_HOME}/models/ckpt"}
+export SAVE_DIR=${SAVE_DIR:-"${WORK_HOME}/output/old_stack_${CURRENT_TIME}"}
+export TENSORBOARD_DIR=${TENSORBOARD_DIR:-"${WORK_HOME}/tensorboard"}
+export RECOMPUTE_METHOD=${RECOMPUTE_METHOD:-block}
+export RECOMPUTE_NUM_LAYERS=${RECOMPUTE_NUM_LAYERS:-8}
+export NO_SAVE=${NO_SAVE:-1}
+MASTER_PORT=${MASTER_PORT:-29588}
+RDZV_ID=${RDZV_ID:-"minicpm5_old_stack_${CURRENT_TIME}"}
+LOG_TEE_LEVEL=${LOG_TEE_LEVEL:-3}
+
+if (( WORLD_SIZE % (TP_SIZE * PP_SIZE * CP_SIZE) != 0 )); then
+  echo "Error: WORLD_SIZE must be divisible by TP_SIZE*PP_SIZE*CP_SIZE."
+  exit 1
+fi
+DP_SIZE=$(( WORLD_SIZE / (TP_SIZE * PP_SIZE * CP_SIZE) ))
+if (( DP_SIZE % EP_SIZE != 0 )) && (( (TP_SIZE * PP_SIZE * CP_SIZE) % EP_SIZE != 0 )); then
+  echo "Error: EP_SIZE(${EP_SIZE}) must divide DP_SIZE(${DP_SIZE}) or TP*PP*CP."
+  exit 1
+fi
+GLOBAL_BATCH_SIZE=$(( MICRO_BATCH_SIZE * NUM_MICROBATCHES * DP_SIZE ))
+EXPNAME="minicpm5_16a3b_s5000_tp${TP_SIZE}_pp${PP_SIZE}_cp${CP_SIZE}_ep${EP_SIZE}_dp${DP_SIZE}_seq${SEQ_LENGTH}_gbs${GLOBAL_BATCH_SIZE}"
+
+OUTPUT_LOG_ROOT="${OUTPUT_LOG_ROOT:-${WORK_HOME}/output_log}"
+LOG_DIR="${OUTPUT_LOG_ROOT}/${CURRENT_TIME}"
+mkdir -p "${LOG_DIR}" "${SAVE_DIR}" "${TENSORBOARD_DIR}"
+LOG_FILE="${LOG_DIR}/${EXPNAME}.launch.log"
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
+fail=0
+check_file() { [[ -f "$1" ]] && echo "OK file $1" || { echo "MISS file $1"; fail=1; }; }
+check_dir() { [[ -d "$1" ]] && echo "OK dir  $1" || { echo "MISS dir  $1"; fail=1; }; }
+
+cat <<CFG
+================ MiniCPM5 16A3B S5000 launch ==================
+STACK:                 old validated stack (ACE off, bias-SwiGLU fusion off)
+WORK_HOME:             ${WORK_HOME}
+SCRIPT_FILE:           ${SCRIPT_FILE}
+PATCH_HOME:            ${PATCH_HOME}
+MEGATRON_PATH:         ${MEGATRON_PATH}
+PRETRAIN_FILE:         ${PRETRAIN_FILE}
+HOSTFILE:              ${HOSTFILE}
+DATA_PATH:             ${DATA_PATH}
+TOKENIZED_MODEL:       ${TOKENIZED_MODEL}
+SAVE_DIR:              ${SAVE_DIR}
+NO_SAVE:               ${NO_SAVE}
+ENABLE_CE_TE:          ${ENABLE_CE_TE:-0}
+ENABLE_MANUAL_GC:      ${ENABLE_MANUAL_GC:-0}
+ENABLE_ROPE_FUSION:    ${ENABLE_ROPE_FUSION:-0}
+ENABLE_MOE_ROUTER_FUSION: ${ENABLE_MOE_ROUTER_FUSION:-0}
+ENABLE_DEEPEP_ENV:     ${ENABLE_DEEPEP_ENV:-0}
+ENABLE_DEEPEP:         ${ENABLE_DEEPEP:-0}
+ENABLE_SHARED_EXPERT_OVERLAP: ${ENABLE_SHARED_EXPERT_OVERLAP:-0}
+ENABLE_RMSNORM_FUSION: ${ENABLE_RMSNORM_FUSION:-0}
+MOE_DEEPEP_NUM_SMS:    ${MOE_DEEPEP_NUM_SMS:-unset}
+MUON_BATCH_NS:         ${MUON_BATCH_NS:-unset}
+MCCL_MIN/MAX_NCHANNELS:${MCCL_MIN_NCHANNELS:-unset}/${MCCL_MAX_NCHANNELS:-unset}
+MCCL_BUFFSIZE:          ${MCCL_BUFFSIZE:-unset}
+TRAIN_ITERS:           ${TRAIN_ITERS}
+RECOMPUTE_NUM_LAYERS:  ${RECOMPUTE_NUM_LAYERS}
+RDZV_ID:               ${RDZV_ID}
+MASTER_PORT:           ${MASTER_PORT}
+TP/PP/CP/EP/DP:        ${TP_SIZE}/${PP_SIZE}/${CP_SIZE}/${EP_SIZE}/${DP_SIZE}
+GLOBAL_BATCH_SIZE:     ${GLOBAL_BATCH_SIZE}
+SEQ_LENGTH:            ${SEQ_LENGTH}
+Top-level log:         ${LOG_FILE}
+======================================================================
+CFG
+
+check_file "${HOSTFILE}"
+check_file "${SCRIPT_FILE}"
+check_file "${PRETRAIN_FILE}"
+check_dir "${PATCH_HOME}"
+check_dir "${MEGATRON_PATH}"
+check_file "${DATA_PATH}.bin"
+check_file "${DATA_PATH}.idx"
+check_dir "${TOKENIZED_MODEL}"
+check_file "${TOKENIZED_MODEL}/config.json"
+if [[ ! -f "${TOKENIZED_MODEL}/tokenizer.json" && ! -f "${TOKENIZED_MODEL}/tokenizer.model" ]]; then
+  echo "MISS tokenizer.json or tokenizer.model under ${TOKENIZED_MODEL}"
+  fail=1
+else
+  echo "OK tokenizer files under ${TOKENIZED_MODEL}"
+fi
+
+mapfile -t hostlist < <(awk '!/^#/ && NF {print $1}' "${HOSTFILE}")
+EXPECTED_WORLD=$(( ${#hostlist[@]} * GPUS_PER_NODE ))
+if (( EXPECTED_WORLD != WORLD_SIZE )); then
+  echo "Error: host count (${#hostlist[@]}) * GPUS_PER_NODE (${GPUS_PER_NODE}) != WORLD_SIZE (${WORLD_SIZE})"
+  fail=1
+fi
+if (( fail != 0 )); then
+  echo "Launch checks failed."
+  exit 2
+fi
+if [[ "${PREFLIGHT_ONLY:-0}" -eq 1 ]]; then
+  echo "PREFLIGHT_ONLY=1; all launch checks passed."
+  exit 0
+fi
+
+PIDS=()
+COUNT=0
+for host in "${hostlist[@]}"; do
+  HOST_LOG="${LOG_FILE}.${COUNT}.${host}"
+  echo "Launching node_rank=${COUNT} host=${host} log=${HOST_LOG}"
+  ssh -i "${SSH_KEYFILE}" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "${SSH_PORT}" "${SSH_USER}@${host}" \
+    "cd '${WORK_HOME}' && \
+GPUS_PER_NODE='${GPUS_PER_NODE}' \
+MEGATRON_PATH='${MEGATRON_PATH}' \
+PRETRAIN_FILE='${PRETRAIN_FILE}' \
+CP_SIZE='${CP_SIZE}' EP_SIZE='${EP_SIZE}' EXPERT_TP_SIZE='1' \
+TRAIN_ITERS='${TRAIN_ITERS}' LR_WARMUP_ITERS='${LR_WARMUP_ITERS}' \
+SAVE_INTERVAL='${SAVE_INTERVAL}' SEQ_LENGTH='${SEQ_LENGTH}' \
+MAX_POSITION_EMBEDDINGS='${MAX_POSITION_EMBEDDINGS}' \
+LOAD_DIR='${LOAD_DIR}' SAVE_DIR='${SAVE_DIR}' TENSORBOARD_DIR='${TENSORBOARD_DIR}' \
+ALLOW_RANDOM_INIT='${ALLOW_RANDOM_INIT}' RESUME='${RESUME}' \
+OVERRIDE_OPT_PARAM_SCHEDULER='${OVERRIDE_OPT_PARAM_SCHEDULER}' \
+USE_GROUPED_GEMM='${USE_GROUPED_GEMM:-1}' \
+RECOMPUTE_METHOD='${RECOMPUTE_METHOD:-block}' \
+RECOMPUTE_NUM_LAYERS='${RECOMPUTE_NUM_LAYERS:-8}' \
+LOG_TEE_LEVEL='${LOG_TEE_LEVEL:-0}' \
+ENABLE_CE_TE='${ENABLE_CE_TE:-0}' \
+ENABLE_DEEPEP='${ENABLE_DEEPEP:-0}' \
+ENABLE_MANUAL_GC='${ENABLE_MANUAL_GC:-0}' \
+ENABLE_ROPE_FUSION='${ENABLE_ROPE_FUSION:-0}' \
+ENABLE_MOE_ROUTER_FUSION='${ENABLE_MOE_ROUTER_FUSION:-0}' \
+ENABLE_DEEPEP_ENV='${ENABLE_DEEPEP_ENV:-0}' \
+ENABLE_SHARED_EXPERT_OVERLAP='${ENABLE_SHARED_EXPERT_OVERLAP:-0}' \
+ENABLE_RMSNORM_FUSION='${ENABLE_RMSNORM_FUSION:-0}' \
+ENABLE_GRAD_ACCUM_FUSION='${ENABLE_GRAD_ACCUM_FUSION:-1}' \
+MOE_DEEPEP_NUM_SMS='${MOE_DEEPEP_NUM_SMS:-}' \
+MUON_BATCH_NS='${MUON_BATCH_NS:-}' \
+MUON_BATCH_NS_MAX_B='${MUON_BATCH_NS_MAX_B:-16}' \
+MCCL_MIN_NCHANNELS='${MCCL_MIN_NCHANNELS:-}' \
+MCCL_MAX_NCHANNELS='${MCCL_MAX_NCHANNELS:-}' \
+MCCL_BUFFSIZE='${MCCL_BUFFSIZE:-}' \
+OUTPUT_LOG_ROOT='${OUTPUT_LOG_ROOT}' \
+NO_SAVE='${NO_SAVE:-1}' \
+DRY_RUN='${DRY_RUN:-0}' \
+bash '${SCRIPT_FILE}' '${WORK_HOME}' '${PATCH_HOME}' '${EXPNAME}' '${HOSTFILE}' '${DATA_PATH}' '${TP_SIZE}' '${PP_SIZE}' '${MICRO_BATCH_SIZE}' '${GLOBAL_BATCH_SIZE}' '${TOKENIZED_MODEL}' '${RDZV_ID}' '${MASTER_PORT}'" \
+    > "${HOST_LOG}" 2>&1 &
+  PIDS+=("$!")
+  COUNT=$((COUNT + 1))
+done
+
+status=0
+for pid in "${PIDS[@]}"; do
+  wait "${pid}" || status=$?
+done
+
+echo "Launch finished with status=${status}"
+exit "${status}"
