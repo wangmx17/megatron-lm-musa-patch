@@ -42,9 +42,9 @@ def forward_step(
 
 
 @record_function_decorator
-def backward_step(input_tensor, output_tensor, output_tensor_grad, model_type, config, pipeline_model_parallel_size=1):
+def backward_step(input_tensor, output_tensor, output_tensor_grad, model_type, config):
     return original_backward_step(
-        input_tensor, output_tensor, output_tensor_grad, model_type, config, pipeline_model_parallel_size
+        input_tensor, output_tensor, output_tensor_grad, model_type, config
     )
 
 
