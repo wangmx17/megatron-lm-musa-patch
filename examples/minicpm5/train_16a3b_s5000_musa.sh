@@ -47,6 +47,13 @@ MOE_LAYER_FREQ='[0]+[1]*27'
 MOE_ROUTER_TOPK_SCALING_FACTOR=3.66
 
 export LD_LIBRARY_PATH=/usr/local/musa/lib:/usr/local/openmpi/lib:${LD_LIBRARY_PATH:-}
+# The v2.1.7-rc3 image has a zero-byte /lib64/libmtperf_target.so ahead of
+# the usable profiler library. Prefer the valid target library only for
+# profiler runs so ordinary training keeps its established library order.
+if [[ "${ENABLE_PROFILER:-0}" -eq 1 ]] && [[ -s /usr/lib/x86_64-linux-gnu/libmtperf_target.so ]]; then
+  export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+  echo "Profiler library path enabled: /usr/lib/x86_64-linux-gnu"
+fi
 export PATH=/usr/local/musa/bin:/usr/local/musa/mccl_test:/usr/local/openmpi/bin:${PATH}
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-4}
 export MTHREADS_VISIBLE_DEVICES=${MTHREADS_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7}
@@ -55,7 +62,7 @@ export MUSA_KERNEL_TIMEOUT=${MUSA_KERNEL_TIMEOUT:-3200000}
 export ACCELERATOR_BACKEND=musa
 export MCCL_PROTOS=${MCCL_PROTOS:-2}
 export MCCL_ALGOS=${MCCL_ALGOS:-1}
-export MCCL_BUFFSIZE=${MCCL_BUFFSIZE:-20971520}
+export MCCL_BUFFSIZE=${MCCL_BUFFSIZE:-16777216}
 export MUSA_BLOCK_SCHEDULE_MODE=${MUSA_BLOCK_SCHEDULE_MODE:-1}
 export MCCL_IB_GID_INDEX=${MCCL_IB_GID_INDEX:-3}
 export MCCL_NET_SHARED_BUFFERS=${MCCL_NET_SHARED_BUFFERS:-0}
@@ -271,13 +278,19 @@ TRAINING_ARGS=(
   --no-bias-dropout-fusion
   --distributed-backend nccl
   --use-distributed-optimizer
-  --recompute-granularity full
-  --recompute-method "${RECOMPUTE_METHOD:-block}"
-  --recompute-num-layers "${RECOMPUTE_NUM_LAYERS:-8}"
   --context-parallel-size "${CP_SIZE}"
   --expert-tensor-parallel-size "${EXPERT_TP_SIZE}"
   --no-create-attention-mask-in-dataloader
 )
+if [[ "${DISABLE_RECOMPUTE:-1}" -eq 1 ]]; then
+  echo "Activation recompute: disabled"
+else
+  TRAINING_ARGS+=(
+    --recompute-granularity full
+    --recompute-method "${RECOMPUTE_METHOD:-block}"
+    --recompute-num-layers "${RECOMPUTE_NUM_LAYERS:-8}"
+  )
+fi
 # Span-based attention (THD/packed) — matches the H800-validated config; saves activation
 # memory at 64K. Disable with USE_SPAN_BASED_ATTN=0.
 [[ "${USE_SPAN_BASED_ATTN:-1}" -eq 1 ]] && TRAINING_ARGS+=(--use-span-based-attn)
@@ -456,7 +469,7 @@ fi
 if [[ "${ENABLE_DEEPEP_ENV:-0}" -eq 1 ]]; then
   export MCCL_MIN_NCHANNELS="${MCCL_MIN_NCHANNELS:-16}"
   export MCCL_MAX_NCHANNELS="${MCCL_MAX_NCHANNELS:-16}"
-  export MCCL_BUFFSIZE="${MCCL_BUFFSIZE:-20971520}"
+  export MCCL_BUFFSIZE="${MCCL_BUFFSIZE:-16777216}"
   export MATE_DEFER_DEEPEP_COUNTS="${MATE_DEFER_DEEPEP_COUNTS:-1}"
   export MUSA_COMPACT_PERMUTE="${MUSA_COMPACT_PERMUTE:-1}"
   OPT_ARGS+=("deepep_env")
