@@ -41,7 +41,13 @@ def maybe_enable_profiling(args, global_step):
             json.dump(rank_pid_relation_map, f)
     # get user defined profiler settings
     enable_profiling = int(os.getenv("ENABLE_PROFILER", 0))
-     # fetch profiler related env
+    profile_ranks_value = os.getenv("PROFILER_RANKS", "")
+    profile_ranks = (
+        {int(value.strip()) for value in profile_ranks_value.split(",") if value.strip()}
+        if profile_ranks_value
+        else None
+    )
+    # fetch profiler related env
     wait_steps = int(os.getenv("PROFILER_WAIT_STEPS", 0))
     warmup_steps = int(os.getenv("PROFILER_WARMUP_STEPS", 3))
     active_steps = int(os.getenv("PROFILER_ACTIVE_STEPS", 1))
@@ -49,9 +55,6 @@ def maybe_enable_profiling(args, global_step):
     profile_freq = int(os.getenv("PROFILER_FREQ", 1))
     current_time = datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
     save_dir = os.getenv("PROFILER_SAVE_DIR", f"./profiler_result/{current_time}")
-    worker_name = os.getenv(
-        "PROFILER_WORKER_NAME", "rank" + str(torch.distributed.get_rank())
-    )
     record_shapes = int(os.getenv("PROFILER_RECORD_SHAPES", 1))
     profile_memory = int(os.getenv("PROFILER_PROFILE_MEMORY", 0))
     with_stack = int(os.getenv("PROFILER_WITH_STACK", 1))
@@ -59,9 +62,10 @@ def maybe_enable_profiling(args, global_step):
     kineto_log_level = int(os.getenv("KINETO_LOG_LEVEL", 0))
 
     if enable_profiling:
-        profile_freq = profile_freq
-
         rank = torch.distributed.get_rank()
+        if profile_ranks is not None and rank not in profile_ranks:
+            yield None
+            return
 
         def trace_handler(prof):
             curr_trace_dir_name = "iteration_" + str(prof.step_num)
