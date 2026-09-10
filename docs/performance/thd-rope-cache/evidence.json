@@ -1,0 +1,550 @@
+{
+  "scope": "RoPE single-variable validation; full-stack 20-step comparison pending",
+  "timing": "Performance mean excludes step 1; profiler timing is not used as performance",
+  "comparison": {
+    "max_loss_rel": 6.863235449189988e-06,
+    "max_grad_norm_rel": 0.00020023226943250192,
+    "iter_reduction_pct": 0.4613719541940786
+  },
+  "cases": {
+    "A_original_perf10": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 65717.1,
+          "loss": 12.26866,
+          "grad_norm": 53.164,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49270.9,
+          "loss": 12.22769,
+          "grad_norm": 54.267,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 48960.7,
+          "loss": 12.23461,
+          "grad_norm": 53.891,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 49016.5,
+          "loss": 12.23334,
+          "grad_norm": 54.763,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 49006.5,
+          "loss": 12.22025,
+          "grad_norm": 51.143,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 49080.0,
+          "loss": 12.07066,
+          "grad_norm": 52.621,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 7,
+          "iter_ms": 48799.4,
+          "loss": 11.98144,
+          "grad_norm": 50.37,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 8,
+          "iter_ms": 48907.8,
+          "loss": 11.77634,
+          "grad_norm": 49.942,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 9,
+          "iter_ms": 48873.9,
+          "loss": 11.65631,
+          "grad_norm": 46.515,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 10,
+          "iter_ms": 48813.3,
+          "loss": 11.54284,
+          "grad_norm": 43.399,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69775.74267578125,
+          "reserved_mib": 74078.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66879.84423828125,
+          "reserved_mib": 70962.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66706.58984375,
+          "reserved_mib": 70680.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68704.69873046875,
+          "reserved_mib": 72802.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 67008.2236328125,
+          "reserved_mib": 71460.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 67471.78759765625,
+          "reserved_mib": 71102.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69927.470703125,
+          "reserved_mib": 73796.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68013.0478515625,
+          "reserved_mib": 71520.0
+        }
+      ],
+      "mean_iter_ms_excluding_first": 48969.88888888889
+    },
+    "B_rope_perf10": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 63930.0,
+          "loss": 12.26865,
+          "grad_norm": 53.164,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49051.6,
+          "loss": 12.22769,
+          "grad_norm": 54.266,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 48744.6,
+          "loss": 12.23456,
+          "grad_norm": 53.89,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 48731.6,
+          "loss": 12.23331,
+          "grad_norm": 54.766,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48951.2,
+          "loss": 12.22027,
+          "grad_norm": 51.138,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48832.5,
+          "loss": 12.07062,
+          "grad_norm": 52.622,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 7,
+          "iter_ms": 48643.6,
+          "loss": 11.98142,
+          "grad_norm": 50.373,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 8,
+          "iter_ms": 48609.6,
+          "loss": 11.77628,
+          "grad_norm": 49.932,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 9,
+          "iter_ms": 48545.6,
+          "loss": 11.65623,
+          "grad_norm": 46.513,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 10,
+          "iter_ms": 48585.3,
+          "loss": 11.54285,
+          "grad_norm": 43.401,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69761.75244140625,
+          "reserved_mib": 74116.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66875.173828125,
+          "reserved_mib": 70982.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66719.31298828125,
+          "reserved_mib": 70700.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68699.87158203125,
+          "reserved_mib": 72764.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 67008.2236328125,
+          "reserved_mib": 71480.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 67467.55810546875,
+          "reserved_mib": 71124.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69923.08447265625,
+          "reserved_mib": 73918.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68013.0478515625,
+          "reserved_mib": 72140.0
+        }
+      ],
+      "mean_iter_ms_excluding_first": 48743.955555555556
+    },
+    "A_original_trace": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64698.1,
+          "loss": 12.23688,
+          "grad_norm": 52.501,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49732.9,
+          "loss": 12.24331,
+          "grad_norm": 54.446,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 49492.5,
+          "loss": 12.24902,
+          "grad_norm": 50.74,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 82596.0,
+          "loss": 12.22225,
+          "grad_norm": 54.525,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48866.6,
+          "loss": 12.18213,
+          "grad_norm": 49.432,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 49058.4,
+          "loss": 12.08892,
+          "grad_norm": 54.471,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69817.13818359375,
+          "reserved_mib": 74014.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66716.6640625,
+          "reserved_mib": 70964.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66598.81640625,
+          "reserved_mib": 70638.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68769.7646484375,
+          "reserved_mib": 72800.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 68581.63916015625,
+          "reserved_mib": 72780.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66461.21533203125,
+          "reserved_mib": 70442.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69947.07666015625,
+          "reserved_mib": 73596.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68768.76806640625,
+          "reserved_mib": 72502.0
+        }
+      ]
+    },
+    "B_rope_trace": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64440.5,
+          "loss": 12.2369,
+          "grad_norm": 52.5,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49478.8,
+          "loss": 12.24329,
+          "grad_norm": 54.446,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 49310.5,
+          "loss": 12.24904,
+          "grad_norm": 50.735,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 82725.2,
+          "loss": 12.22235,
+          "grad_norm": 54.526,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48800.1,
+          "loss": 12.1821,
+          "grad_norm": 49.436,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48713.0,
+          "loss": 12.08883,
+          "grad_norm": 54.47,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69817.3017578125,
+          "reserved_mib": 74054.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66716.6640625,
+          "reserved_mib": 70920.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66598.81640625,
+          "reserved_mib": 70620.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68761.5400390625,
+          "reserved_mib": 72842.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 68587.02783203125,
+          "reserved_mib": 72740.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66460.7255859375,
+          "reserved_mib": 70504.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69930.412109375,
+          "reserved_mib": 73618.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68777.3876953125,
+          "reserved_mib": 72502.0
+        }
+      ]
+    }
+  },
+  "traces": {
+    "A": {
+      "source_filename": "rank0.1789041605924.pt.trace.json.gz",
+      "source_file_sha256": "7005314a02f51c0d4f346e2c039827ae9d25adb3667c40f5dcd88ce0ce4a97ed",
+      "source_bytes": 162823642,
+      "review_filename": "A.review.trace.json.gz",
+      "review_bytes": 46935023,
+      "review_sha256": "3304bd93c372039cecd5ba1f8e1761f121df69bcf9ca5e9f0bc1b0a458c32c07",
+      "scope": "Filtered review artifact, NOT the unmodified full trace. All categories except unrelated Python frames retained; original timestamps/correlation IDs retained; args restricted; names use relative code paths.",
+      "original_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1078802,
+        "fwdbwd": 43104,
+        "python_function": 3300069,
+        "privateuse1_runtime": 504158,
+        "ac2g": 722150,
+        "gpu_memcpy": 7734,
+        "kernel": 205540,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 782,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      },
+      "retained_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1078802,
+        "fwdbwd": 43104,
+        "python_function": 255008,
+        "privateuse1_runtime": 504158,
+        "ac2g": 722150,
+        "gpu_memcpy": 7734,
+        "kernel": 205540,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 782,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      }
+    },
+    "B": {
+      "source_filename": "rank0.1789041991045.pt.trace.json.gz",
+      "source_file_sha256": "10e98aaf6a7cfbd7854d92fbe8087e0539feb00df689b3794e6c3904b4a5e555",
+      "source_bytes": 162867800,
+      "review_filename": "B.review.trace.json.gz",
+      "review_bytes": 46657943,
+      "review_sha256": "060dc572f61c9b1926b6cf4dfb911471d9a79707dc1c9b62fdbf6448f009697e",
+      "scope": "Filtered review artifact, NOT the unmodified full trace. All categories except unrelated Python frames retained; original timestamps/correlation IDs retained; args restricted; names use relative code paths.",
+      "original_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1062918,
+        "fwdbwd": 43104,
+        "python_function": 3301079,
+        "privateuse1_runtime": 506149,
+        "ac2g": 721441,
+        "gpu_memcpy": 6854,
+        "kernel": 203722,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 780,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      },
+      "retained_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1062918,
+        "fwdbwd": 43104,
+        "python_function": 256854,
+        "privateuse1_runtime": 506149,
+        "ac2g": 721441,
+        "gpu_memcpy": 6854,
+        "kernel": 203722,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 780,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      }
+    }
+  },
+  "gradient_scope": "Training grad norm comparison, not elementwise full-model gradient equivalence"
+}
