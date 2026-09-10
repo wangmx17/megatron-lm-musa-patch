@@ -1,0 +1,106 @@
+{
+  "complete": true,
+  "all_source_hashes_match": true,
+  "helpers_restored": true,
+  "temporary_source_workspace_absent": true,
+  "remaining_task_process_count": 0,
+  "devices_idle_after_suite": true,
+  "cases": {
+    "A_te_perf10": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "B_te_perf10": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "A_te_trace": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "B_te_trace": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "A_route_perf10": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "B_route_perf10": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "A_route_trace": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "B_route_trace": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "A_muon_perf10": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "B_muon_perf10": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "A_muon_trace": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "B_muon_trace": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "A_all_perf20": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "B_all_perf20": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "A_all_trace": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    },
+    "B_all_trace": {
+      "source_restored": true,
+      "helpers_restored": true,
+      "remaining_rank_count": 0,
+      "initial_sources_still_match": true
+    }
+  }
+}

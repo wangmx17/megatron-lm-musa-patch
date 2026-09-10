@@ -1,0 +1,38 @@
+{
+  "base_commit": "b1511ab68f76d384d2df24c400056df4d3adc4fb",
+  "verification": "Before every case, the runner SHA256-checked all staged submitted files; B cases then recorded active candidate hashes before launch and restored initial source hashes after exit.",
+  "optimizations": {
+    "rope": {
+      "code_commit": "519738706656196a688c8d84abfe05b0a8f8ebb2",
+      "evidence_head_before_full_stack": "bae6dea79799df2ac79a41a05dbcc901254b1a7c",
+      "files": {
+        "musa_patch/rotary_pos_embedding.py": "9628ae4fe6608cc09b50a5e956e9d4cbb8753b15bfc2e4447fe675705f8f870c",
+        "musa_patch/thd_metadata_cache.py": "53a7d349cc6be1695b9ed5f9449665bdefd9f7be32ef163e8ed67132f0aeaa3b"
+      }
+    },
+    "te": {
+      "code_commit": "11ffb813dde82628f6cab82026e61416fb850ba0",
+      "evidence_head": "b5ac3ff4773c44bba4b54c053c8f8022b1c46f3e",
+      "files": {
+        "musa_patch/te_padded_metadata.py": "5d5def3126c46ebc66c1d17ad6b8f0388e675baff7f93b097c12c92782246a37",
+        "runtime_registration_snippet": "99d3684e8b18d8542bc9868fed4010d5b0f5ce20f786f1f03d5d233577f0d063"
+      }
+    },
+    "route": {
+      "code_commit": "877a365e5f99f106b7ab8b8ce42bbc88c7fa8806",
+      "evidence_head": "25285b5da73e37170fe7191050947a26613f80c5",
+      "files": {
+        "musa_patch/moe_route_conversion.py": "b4927046bacbc9bc8a49868a0c251a8a8c8bc7b7deaf8041ca5763c2c8e3e0db",
+        "runtime_registration_snippet": "852086ed36a25393ef661169d19a71cd6f6e4f57726260c84342f2d2e79d3b12"
+      }
+    },
+    "muon": {
+      "code_commit": "d394151bb8da27647f778ac5fd7dfa1650b8a9be",
+      "evidence_head": "0d4d284ba70a188407fb06511b68ef6d9785c112",
+      "files": {
+        "musa_patch/muon_expert_batch.py": "7d878f38520b90b9b49b6cba679a7ec7a98f6e067f8bf2da5a89781a0e0652ac",
+        "musa_patch/optimizer.py": "2dc34835780e6e258b5ffa5720ed9f2cbdd69d906b6d928dc6e0deba1f196fcf"
+      }
+    }
+  }
+}

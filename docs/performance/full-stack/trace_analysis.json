@@ -1,0 +1,285 @@
+{
+  "scope": "Rank 0, profiler step 4 from independent six-step A/B full-stack runs",
+  "trace_timing_warning": "Profiler iteration timing is excluded from the performance claim",
+  "host_time_warning": "Host times are inclusive and nested; do not add them",
+  "review_trace_warning": "Review traces are filtered copies, not the unmodified raw traces",
+  "trace_integrity": {
+    "A": {
+      "source_filename": "rank0.1789054089122.pt.trace.json.gz",
+      "source_file_sha256": "b8f6e64f33f09d3033f439b0d813bd778fee58173701426f2ce271b0b35a37fe",
+      "source_bytes": 162871135,
+      "review_filename": "pr_all_A.review.trace.json.gz",
+      "review_sha256": "2c0b5d6fe966066b22300d3bfb89835ff382fec8d79fae9fe5e1e480f42fac45",
+      "review_bytes": 46942643
+    },
+    "B": {
+      "source_filename": "rank0.1789054466535.pt.trace.json.gz",
+      "source_file_sha256": "7144a8004b3a55eddcf71c683bd041b9563c1424174c19d48436c4466c809ac4",
+      "source_bytes": 164161349,
+      "review_filename": "pr_all_B.review.trace.json.gz",
+      "review_sha256": "67340ef0ebe089403f75eb1543c71a70740dd49aa30492fb393ed93f718d672b",
+      "review_bytes": 36937466
+    }
+  },
+  "trace_numerics": {
+    "A": {
+      "steps": 6,
+      "launcher_rc": 0,
+      "loss": [
+        12.23689,
+        12.24329,
+        12.24909,
+        12.22229,
+        12.18205,
+        12.08887
+      ],
+      "grad_norm": [
+        52.5,
+        54.446,
+        50.737,
+        54.524,
+        49.436,
+        54.468
+      ],
+      "skip": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "nan": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "B": {
+      "steps": 6,
+      "launcher_rc": 0,
+      "loss": [
+        12.23688,
+        12.24329,
+        12.24902,
+        12.22232,
+        12.18211,
+        12.08883
+      ],
+      "grad_norm": [
+        52.5,
+        54.446,
+        50.735,
+        54.526,
+        49.439,
+        54.469
+      ],
+      "skip": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "nan": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "comparison": {
+      "max_loss_relative_difference": 5.7147102356911955e-06,
+      "max_grad_norm_relative_difference": 6.068452140141018e-05
+    }
+  },
+  "device_timeline": {
+    "A": {
+      "device_span_s": 49.94932331933594,
+      "device_busy_union_s": 46.20660733300781,
+      "gaps_gt_100us_count": 8573,
+      "gaps_gt_100us_sum_s": 1.4886154941406264,
+      "largest_gap_ms": 21.8250400390625,
+      "flash_attention_kernel_count": 3584,
+      "flash_attention_kernel_sum_s": 19.162775381000003
+    },
+    "B": {
+      "device_span_s": 48.137200107421876,
+      "device_busy_union_s": 46.40939813085937,
+      "gaps_gt_100us_count": 3717,
+      "gaps_gt_100us_sum_s": 0.7136792080078094,
+      "largest_gap_ms": 40.7156201171875,
+      "flash_attention_kernel_count": 3584,
+      "flash_attention_kernel_sum_s": 19.127336537000012
+    }
+  },
+  "mechanisms": {
+    "A": {
+      "tensor_tolist": {
+        "count": 1345,
+        "inclusive_s": 3.361824235000002
+      },
+      "aten_equal": {
+        "count": 2704,
+        "inclusive_s": 17.27606816699999
+      },
+      "aten_nonzero": {
+        "count": 1312,
+        "inclusive_s": 6.096741025999995
+      },
+      "aten_index": {
+        "count": 1296,
+        "inclusive_s": 0.9138324569999996
+      },
+      "aten_index_put_impl": {
+        "count": 1344,
+        "inclusive_s": 5.342463404000005
+      },
+      "musa_memcpy_async": {
+        "count": 7734,
+        "inclusive_s": 9.468354672000011
+      },
+      "musa_stream_synchronize": {
+        "count": 6375,
+        "inclusive_s": 21.695457883999964
+      },
+      "aten_item": {
+        "count": 32014,
+        "inclusive_s": 21.718717826000027
+      },
+      "aten_local_scalar_dense": {
+        "count": 32014,
+        "inclusive_s": 21.69556696999996
+      },
+      "route_forward_kernel": {
+        "count": 0,
+        "inclusive_s": 0.0
+      },
+      "route_backward_kernel": {
+        "count": 0,
+        "inclusive_s": 0.0
+      },
+      "muon": {
+        "top_level_step": {
+          "count": 2,
+          "inclusive_s": 1.608308528
+        },
+        "single_parameter_ns": {
+          "count": 1089,
+          "inclusive_s": 1.3505730700000007
+        },
+        "batched_ns": {
+          "count": 0,
+          "inclusive_s": 0.0
+        },
+        "aten_mm": {
+          "count": 16335,
+          "inclusive_s": 0.4985940500000006
+        },
+        "aten_bmm": {
+          "count": 0,
+          "inclusive_s": 0.0
+        },
+        "aten_stack": {
+          "count": 0,
+          "inclusive_s": 0.0
+        },
+        "runtime_correlations": 59946
+      }
+    },
+    "B": {
+      "tensor_tolist": {
+        "count": 465,
+        "inclusive_s": 0.027444573000000003
+      },
+      "aten_equal": {
+        "count": 912,
+        "inclusive_s": 26.24007773400003
+      },
+      "aten_nonzero": {
+        "count": 16,
+        "inclusive_s": 0.006707691
+      },
+      "aten_index": {
+        "count": 0,
+        "inclusive_s": 0.0
+      },
+      "aten_index_put_impl": {
+        "count": 48,
+        "inclusive_s": 0.0013388590000000002
+      },
+      "musa_memcpy_async": {
+        "count": 2470,
+        "inclusive_s": 0.07465149600000005
+      },
+      "musa_stream_synchronize": {
+        "count": 2407,
+        "inclusive_s": 30.73122497699998
+      },
+      "aten_item": {
+        "count": 8830,
+        "inclusive_s": 30.708890285000017
+      },
+      "aten_local_scalar_dense": {
+        "count": 8830,
+        "inclusive_s": 30.700280299000006
+      },
+      "route_forward_kernel": {
+        "count": 432,
+        "inclusive_s": 0.020279427000000006
+      },
+      "route_backward_kernel": {
+        "count": 432,
+        "inclusive_s": 0.016638713000000003
+      },
+      "rope_cache_lookups": {
+        "count": 896,
+        "inclusive_s": 0.028261717000000006
+      },
+      "rope_device_reads": {
+        "count": 16,
+        "inclusive_s": 0.023868986999999998
+      },
+      "muon": {
+        "top_level_step": {
+          "count": 2,
+          "inclusive_s": 0.492461602
+        },
+        "single_parameter_ns": {
+          "count": 9,
+          "inclusive_s": 0.011294293
+        },
+        "batched_ns": {
+          "count": 136,
+          "inclusive_s": 0.222453232
+        },
+        "aten_mm": {
+          "count": 135,
+          "inclusive_s": 0.004142679999999998
+        },
+        "aten_bmm": {
+          "count": 2040,
+          "inclusive_s": 0.06976057400000003
+        },
+        "aten_stack": {
+          "count": 136,
+          "inclusive_s": 0.005923200000000001
+        },
+        "runtime_correlations": 15780
+      }
+    }
+  },
+  "remaining_sync": {
+    "description": "The remaining equal/item synchronization is dominated by the flash-attention varlen mismatch check in backward",
+    "A_backward_equal_count": 448,
+    "A_backward_equal_inclusive_s": 17.00440246499999,
+    "B_backward_equal_count": 448,
+    "B_backward_equal_inclusive_s": 22.49254792400002
+  }
+}
