@@ -5,6 +5,7 @@ import unittest
 
 import torch
 import torch_musa
+import musa_patch  # Match training bootstrap, including TE's runtime library loading.
 
 path = Path(__file__).resolve().parents[1] / 'musa_patch/moe_route_conversion.py'
 spec = importlib.util.spec_from_file_location('moe_route_conversion', path)
