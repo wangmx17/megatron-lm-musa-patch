@@ -1,0 +1,556 @@
+{
+  "scope": "route single-variable validation; full-stack 20-step comparison pending",
+  "timing": "Performance mean excludes step 1; profiler timing is not a performance result",
+  "gradient_scope": "Training grad norm, not elementwise full-model gradient equivalence",
+  "cases": {
+    "A_route_perf10": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64376.4,
+          "loss": 12.26866,
+          "grad_norm": 53.164,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49221.3,
+          "loss": 12.22771,
+          "grad_norm": 54.266,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 48872.0,
+          "loss": 12.23459,
+          "grad_norm": 53.891,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 49057.1,
+          "loss": 12.23336,
+          "grad_norm": 54.767,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 49007.0,
+          "loss": 12.22002,
+          "grad_norm": 51.136,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 49004.2,
+          "loss": 12.07054,
+          "grad_norm": 52.621,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 7,
+          "iter_ms": 48810.4,
+          "loss": 11.98143,
+          "grad_norm": 50.376,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 8,
+          "iter_ms": 48783.9,
+          "loss": 11.77615,
+          "grad_norm": 49.934,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 9,
+          "iter_ms": 48845.9,
+          "loss": 11.65627,
+          "grad_norm": 46.509,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 10,
+          "iter_ms": 48797.1,
+          "loss": 11.54279,
+          "grad_norm": 43.397,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69769.802734375,
+          "reserved_mib": 74036.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66879.65087890625,
+          "reserved_mib": 71002.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66721.0732421875,
+          "reserved_mib": 70702.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68700.923828125,
+          "reserved_mib": 72780.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 67007.51123046875,
+          "reserved_mib": 71480.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 67472.53076171875,
+          "reserved_mib": 71182.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69920.20849609375,
+          "reserved_mib": 73776.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68013.92626953125,
+          "reserved_mib": 71742.0
+        }
+      ],
+      "mean_iter_ms_excluding_first": 48933.21111111111
+    },
+    "A_route_trace": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64306.2,
+          "loss": 12.23689,
+          "grad_norm": 52.5,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49658.7,
+          "loss": 12.2433,
+          "grad_norm": 54.446,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 49535.9,
+          "loss": 12.24895,
+          "grad_norm": 50.737,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 82312.3,
+          "loss": 12.22234,
+          "grad_norm": 54.525,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48878.6,
+          "loss": 12.18209,
+          "grad_norm": 49.438,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48976.6,
+          "loss": 12.08883,
+          "grad_norm": 54.474,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69819.43994140625,
+          "reserved_mib": 74014.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66716.6640625,
+          "reserved_mib": 70962.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66598.81640625,
+          "reserved_mib": 70638.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68767.869140625,
+          "reserved_mib": 72740.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 68578.60986328125,
+          "reserved_mib": 72780.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66460.7255859375,
+          "reserved_mib": 70542.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69936.47119140625,
+          "reserved_mib": 74796.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68771.80859375,
+          "reserved_mib": 72502.0
+        }
+      ]
+    },
+    "B_route_perf10": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64033.8,
+          "loss": 12.26866,
+          "grad_norm": 53.164,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49072.9,
+          "loss": 12.22769,
+          "grad_norm": 54.265,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 48775.4,
+          "loss": 12.23448,
+          "grad_norm": 53.89,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 48865.3,
+          "loss": 12.23337,
+          "grad_norm": 54.761,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48888.2,
+          "loss": 12.22025,
+          "grad_norm": 51.139,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48922.4,
+          "loss": 12.07057,
+          "grad_norm": 52.619,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 7,
+          "iter_ms": 48748.5,
+          "loss": 11.98132,
+          "grad_norm": 50.374,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 8,
+          "iter_ms": 48815.1,
+          "loss": 11.77621,
+          "grad_norm": 49.94,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 9,
+          "iter_ms": 48761.5,
+          "loss": 11.65625,
+          "grad_norm": 46.51,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 10,
+          "iter_ms": 48727.3,
+          "loss": 11.54286,
+          "grad_norm": 43.4,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69797.45947265625,
+          "reserved_mib": 74132.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66921.52001953125,
+          "reserved_mib": 71532.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66764.0556640625,
+          "reserved_mib": 71212.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68741.79296875,
+          "reserved_mib": 72832.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 67047.83349609375,
+          "reserved_mib": 71512.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 67512.54345703125,
+          "reserved_mib": 71234.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69957.2412109375,
+          "reserved_mib": 73832.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68051.67236328125,
+          "reserved_mib": 71952.0
+        }
+      ],
+      "mean_iter_ms_excluding_first": 48841.84444444445
+    },
+    "B_route_trace": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64061.7,
+          "loss": 12.23689,
+          "grad_norm": 52.501,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49563.2,
+          "loss": 12.24329,
+          "grad_norm": 54.446,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 49279.9,
+          "loss": 12.24904,
+          "grad_norm": 50.736,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 83003.7,
+          "loss": 12.2223,
+          "grad_norm": 54.526,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48858.5,
+          "loss": 12.18207,
+          "grad_norm": 49.44,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48893.7,
+          "loss": 12.08873,
+          "grad_norm": 54.472,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69852.4375,
+          "reserved_mib": 74112.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66752.2314453125,
+          "reserved_mib": 72472.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66638.12158203125,
+          "reserved_mib": 70590.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68814.00390625,
+          "reserved_mib": 72872.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 68636.2431640625,
+          "reserved_mib": 72812.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66500.43896484375,
+          "reserved_mib": 70534.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69973.39794921875,
+          "reserved_mib": 74332.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68797.669921875,
+          "reserved_mib": 72510.0
+        }
+      ]
+    }
+  },
+  "comparisons": {
+    "perf10": {
+      "max_loss_rel": 1.8821573123462525e-05,
+      "max_grad_norm_rel": 0.00012015860936436551,
+      "iter_reduction_pct": 0.18671708762214578
+    },
+    "trace": {
+      "max_loss_rel": 8.272099119581212e-06,
+      "max_grad_norm_rel": 4.045471095099597e-05
+    }
+  },
+  "traces": {
+    "A": {
+      "source_filename": "rank0.1789048727615.pt.trace.json.gz",
+      "source_file_sha256": "080df3ab68e7360991d41b185c075d9d45905199b9fb2bcb6b161ff64b62fcc2",
+      "source_bytes": 162880017,
+      "review_filename": "A.review.trace.json.gz",
+      "review_bytes": 46933390,
+      "review_sha256": "628a527120f51a357c24ed30d3c0756e3074606be93c8269ef0ece9e2b750a45",
+      "scope": "Filtered review artifact, NOT the unmodified full trace. All categories except unrelated Python frames retained; original timestamps/correlation IDs retained; args restricted; names use relative code paths.",
+      "original_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1078802,
+        "fwdbwd": 43104,
+        "python_function": 3301203,
+        "privateuse1_runtime": 504250,
+        "ac2g": 722354,
+        "gpu_memcpy": 7734,
+        "kernel": 205654,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 780,
+        "gpu_user_annotation": 10999,
+        "": 92,
+        "Trace": 1
+      },
+      "retained_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1078802,
+        "fwdbwd": 43104,
+        "python_function": 255073,
+        "privateuse1_runtime": 504250,
+        "ac2g": 722354,
+        "gpu_memcpy": 7734,
+        "kernel": 205654,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 780,
+        "gpu_user_annotation": 10999,
+        "": 92,
+        "Trace": 1
+      }
+    },
+    "B": {
+      "source_filename": "rank0.1789049107736.pt.trace.json.gz",
+      "source_file_sha256": "d5ffe5e7797f608d2297ad50abf00bcaecf1b4177e04ccab3ab616f81e60202d",
+      "source_bytes": 163905042,
+      "review_filename": "B.review.trace.json.gz",
+      "review_bytes": 45051100,
+      "review_sha256": "46359a9619092b0efc51e17d9ebd1cb5f21ded98a26ddc9ffe2af0a56896bc92",
+      "scope": "Filtered review artifact, NOT the unmodified full trace. All categories except unrelated Python frames retained; original timestamps/correlation IDs retained; args restricted; names use relative code paths.",
+      "original_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1031714,
+        "fwdbwd": 42240,
+        "python_function": 3420207,
+        "privateuse1_runtime": 496636,
+        "ac2g": 701756,
+        "gpu_memcpy": 5142,
+        "kernel": 194398,
+        "privateuse1_driver": 4800,
+        "gpu_memset": 780,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      },
+      "retained_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1031714,
+        "fwdbwd": 42240,
+        "python_function": 264094,
+        "privateuse1_runtime": 496636,
+        "ac2g": 701756,
+        "gpu_memcpy": 5142,
+        "kernel": 194398,
+        "privateuse1_driver": 4800,
+        "gpu_memset": 780,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      }
+    }
+  }
+}

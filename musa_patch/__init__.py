@@ -68,6 +68,9 @@ def patch_before_import_megatron():
         from . import deepep_ace
     from . import ce_te_stride
     from . import moe_router_fusion
+    if os.getenv("MUSA_FUSED_ROUTE_CONVERSION", "0") == "1":
+        from .moe_route_conversion import install as install_route_conversion
+        install_route_conversion()
 
     from . import core_pipeline_parallel_schedules
     from . import yarn_rotary_pos_embedding
@@ -265,5 +268,4 @@ if os.getenv("ENABLE_ZERO_BUBBLE", "0") == "1":
     zbb_light.patch_megatron()
 
 patch_before_import_megatron()
-
 
