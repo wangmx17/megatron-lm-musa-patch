@@ -1,0 +1,596 @@
+{
+  "scope": "muon single-variable validation; full-stack 20-step comparison pending",
+  "timing": "Performance mean excludes step 1; profiler timing is not a performance result",
+  "gradient_scope": "Training grad norm, not elementwise full-model gradient equivalence",
+  "cases": {
+    "A_muon_perf10": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 66324.0,
+          "loss": 12.26868,
+          "grad_norm": 53.164,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49250.5,
+          "loss": 12.2277,
+          "grad_norm": 54.265,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 48939.2,
+          "loss": 12.23451,
+          "grad_norm": 53.892,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 49007.8,
+          "loss": 12.23348,
+          "grad_norm": 54.76,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 49009.3,
+          "loss": 12.2202,
+          "grad_norm": 51.133,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 49061.1,
+          "loss": 12.07063,
+          "grad_norm": 52.624,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 7,
+          "iter_ms": 48879.6,
+          "loss": 11.9815,
+          "grad_norm": 50.377,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 8,
+          "iter_ms": 48832.0,
+          "loss": 11.77618,
+          "grad_norm": 49.94,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 9,
+          "iter_ms": 48812.7,
+          "loss": 11.65626,
+          "grad_norm": 46.516,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 10,
+          "iter_ms": 48806.5,
+          "loss": 11.54284,
+          "grad_norm": 43.399,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69768.6943359375,
+          "reserved_mib": 74076.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66888.37353515625,
+          "reserved_mib": 70982.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66718.048828125,
+          "reserved_mib": 70702.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68705.5654296875,
+          "reserved_mib": 74182.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 67008.2236328125,
+          "reserved_mib": 71480.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 67476.9873046875,
+          "reserved_mib": 71162.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69908.888671875,
+          "reserved_mib": 73798.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68013.0478515625,
+          "reserved_mib": 71540.0
+        }
+      ],
+      "mean_iter_ms_excluding_first": 48955.41111111111
+    },
+    "A_muon_trace": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64918.7,
+          "loss": 12.23688,
+          "grad_norm": 52.5,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49789.6,
+          "loss": 12.2433,
+          "grad_norm": 54.446,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 49584.8,
+          "loss": 12.24903,
+          "grad_norm": 50.733,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 82071.4,
+          "loss": 12.22227,
+          "grad_norm": 54.527,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 49048.4,
+          "loss": 12.18219,
+          "grad_norm": 49.436,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 49048.5,
+          "loss": 12.0888,
+          "grad_norm": 54.471,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69823.609375,
+          "reserved_mib": 74036.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66716.6640625,
+          "reserved_mib": 70922.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66598.81640625,
+          "reserved_mib": 70560.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68774.421875,
+          "reserved_mib": 74500.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 68583.3154296875,
+          "reserved_mib": 72760.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66460.7255859375,
+          "reserved_mib": 70522.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69937.4296875,
+          "reserved_mib": 73638.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68760.10107421875,
+          "reserved_mib": 72402.0
+        }
+      ]
+    },
+    "B_muon_perf10": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64065.8,
+          "loss": 12.26865,
+          "grad_norm": 53.163,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 48794.2,
+          "loss": 12.2277,
+          "grad_norm": 54.266,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 48490.6,
+          "loss": 12.23455,
+          "grad_norm": 53.892,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 48540.4,
+          "loss": 12.23338,
+          "grad_norm": 54.761,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48613.2,
+          "loss": 12.22012,
+          "grad_norm": 51.139,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48597.0,
+          "loss": 12.0706,
+          "grad_norm": 52.624,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 7,
+          "iter_ms": 48362.3,
+          "loss": 11.98134,
+          "grad_norm": 50.375,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 8,
+          "iter_ms": 48465.3,
+          "loss": 11.77624,
+          "grad_norm": 49.941,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 9,
+          "iter_ms": 48376.2,
+          "loss": 11.6562,
+          "grad_norm": 46.515,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 10,
+          "iter_ms": 48357.1,
+          "loss": 11.54281,
+          "grad_norm": 43.402,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69756.6171875,
+          "reserved_mib": 74076.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66888.224609375,
+          "reserved_mib": 71002.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66712.794921875,
+          "reserved_mib": 70760.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68702.9833984375,
+          "reserved_mib": 72782.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 67008.2236328125,
+          "reserved_mib": 71420.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 67469.92529296875,
+          "reserved_mib": 71122.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69915.30859375,
+          "reserved_mib": 73816.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68013.0478515625,
+          "reserved_mib": 71842.0
+        }
+      ],
+      "mean_iter_ms_excluding_first": 48510.7
+    },
+    "B_muon_trace": {
+      "launcher_rc": 0,
+      "error": null,
+      "complete": true,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64419.5,
+          "loss": 12.23689,
+          "grad_norm": 52.5,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49309.7,
+          "loss": 12.24329,
+          "grad_norm": 54.446,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 48715.1,
+          "loss": 12.24902,
+          "grad_norm": 50.735,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 78840.1,
+          "loss": 12.22231,
+          "grad_norm": 54.526,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48501.0,
+          "loss": 12.18211,
+          "grad_norm": 49.433,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48543.8,
+          "loss": 12.08871,
+          "grad_norm": 54.472,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69820.7373046875,
+          "reserved_mib": 74014.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66716.6640625,
+          "reserved_mib": 70982.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66598.81640625,
+          "reserved_mib": 70600.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68772.8466796875,
+          "reserved_mib": 73500.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 68589.03955078125,
+          "reserved_mib": 72760.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66460.7255859375,
+          "reserved_mib": 70462.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69941.3427734375,
+          "reserved_mib": 73618.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68766.47802734375,
+          "reserved_mib": 72422.0
+        }
+      ]
+    }
+  },
+  "comparisons": {
+    "perf10": {
+      "max_loss_rel": 1.3353920627721754e-05,
+      "max_grad_norm_rel": 0.00011734105176696512,
+      "iter_reduction_pct": 0.9084003198375434
+    },
+    "trace": {
+      "max_loss_rel": 7.444907683156766e-06,
+      "max_grad_norm_rel": 6.068452140141018e-05
+    }
+  },
+  "traces": {
+    "A": {
+      "source_filename": "rank0.1789050932854.pt.trace.json.gz",
+      "source_file_sha256": "b42fa1a2ccb018aa70b8efdb3d76ce617bdb8341cf193fd1c427c6242e2815c7",
+      "source_bytes": 162839169,
+      "review_filename": "A.review.trace.json.gz",
+      "review_bytes": 46944378,
+      "review_sha256": "1e2337ba79fb2a7e06eae6a0d12a750ef8aca1b24fcaff44c4969d729b43a212",
+      "scope": "Filtered review artifact, NOT the unmodified full trace. All categories except unrelated Python frames retained; original timestamps/correlation IDs retained; args restricted; names use relative code paths.",
+      "original_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1078802,
+        "fwdbwd": 43104,
+        "python_function": 3300093,
+        "privateuse1_runtime": 503869,
+        "ac2g": 721949,
+        "gpu_memcpy": 7734,
+        "kernel": 205630,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 780,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      },
+      "retained_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1078802,
+        "fwdbwd": 43104,
+        "python_function": 255016,
+        "privateuse1_runtime": 503869,
+        "ac2g": 721949,
+        "gpu_memcpy": 7734,
+        "kernel": 205630,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 780,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      }
+    },
+    "B": {
+      "source_filename": "rank0.1789051309325.pt.trace.json.gz",
+      "source_file_sha256": "958128b3cfadf74adf6a2a628c98cbb077cb0dafb300ef214df15d4eb2cdd3c4",
+      "source_bytes": 152458112,
+      "review_filename": "B.review.trace.json.gz",
+      "review_bytes": 39760644,
+      "review_sha256": "28d6bf7d39e5426b38eb899715d86ead0d444f698dcf1b448706afe345208537",
+      "scope": "Filtered review artifact, NOT the unmodified full trace. All categories except unrelated Python frames retained; original timestamps/correlation IDs retained; args restricted; names use relative code paths.",
+      "original_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 813222,
+        "fwdbwd": 43104,
+        "python_function": 3287805,
+        "privateuse1_runtime": 460822,
+        "ac2g": 634810,
+        "gpu_memcpy": 7734,
+        "kernel": 161400,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 918,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      },
+      "retained_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 813222,
+        "fwdbwd": 43104,
+        "python_function": 253167,
+        "privateuse1_runtime": 460822,
+        "ac2g": 634810,
+        "gpu_memcpy": 7734,
+        "kernel": 161400,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 918,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      }
+    }
+  },
+  "runtime_batch_observation": {
+    "case": "B_muon_perf10",
+    "rank": 7,
+    "scope": "Unique first-observation markers printed by the submitted adapter; complete run evidence is in evidence.json",
+    "markers": [
+      {
+        "shape": [
+          1024,
+          2048
+        ],
+        "batch": 4,
+        "max_batch": 8
+      },
+      {
+        "shape": [
+          1024,
+          2048
+        ],
+        "batch": 8,
+        "max_batch": 8
+      },
+      {
+        "shape": [
+          2048,
+          512
+        ],
+        "batch": 4,
+        "max_batch": 8
+      },
+      {
+        "shape": [
+          2048,
+          512
+        ],
+        "batch": 8,
+        "max_batch": 8
+      }
+    ],
+    "source_log_sha256": "25e602452abe5aca7028773bb1d5b8b8588c741086c9a1ce84c0923d438f54cd"
+  }
+}
