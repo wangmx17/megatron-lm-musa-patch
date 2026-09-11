@@ -1,0 +1,140 @@
+{
+  "scope": "Flex/DeepEP shared expert eager explicit TP/SP state machine on top of the common PR #8-#11 runtime stack",
+  "timing": "Two reverse-order 10-step A/B pairs; means exclude step 1 and use steps 2-10; profiler timing is not used as the performance result",
+  "gradient_scope": "Per-step training grad norm comparison, not elementwise full-model gradient equivalence",
+  "topology": {
+    "accelerators": "8 x MTT S5000",
+    "precision": "BF16",
+    "parallelism": "TP2 PP1 CP4 EP8 DP1",
+    "sequence_length": 65536,
+    "global_batch_size": 16,
+    "micro_batch_size": 1,
+    "layout": "THD/span-based",
+    "data": "real indexed training data"
+  },
+  "performance": {
+    "A_then_B": {
+      "A_mean_s_iter_steps_2_10": 47.995222,
+      "B_mean_s_iter_steps_2_10": 47.782900,
+      "reduction_s_iter": 0.212322,
+      "reduction_pct": 0.4424
+    },
+    "B_then_A": {
+      "A_mean_s_iter_steps_2_10": 48.014000,
+      "B_mean_s_iter_steps_2_10": 47.669589,
+      "reduction_s_iter": 0.344411,
+      "reduction_pct": 0.7173
+    },
+    "combined": {
+      "A_mean_s_iter_steps_2_10": 48.004611,
+      "B_mean_s_iter_steps_2_10": 47.726244,
+      "reduction_s_iter": 0.278367,
+      "reduction_pct": 0.5799
+    }
+  },
+  "correctness_and_exit": {
+    "A_then_B": {
+      "max_step_loss_relative_difference": 0.000012129,
+      "max_step_grad_norm_relative_difference": 0.00013826,
+      "A_steps": "10/10",
+      "B_steps": "10/10",
+      "A_launcher_rc": 0,
+      "B_launcher_rc": 0,
+      "skip": 0,
+      "nan": 0,
+      "hang": false
+    },
+    "B_then_A": {
+      "max_step_loss_relative_difference": 0.000011888,
+      "max_step_grad_norm_relative_difference": 0.00010013,
+      "A_steps": "10/10",
+      "B_steps": "10/10",
+      "A_launcher_rc": 0,
+      "B_launcher_rc": 0,
+      "skip": 0,
+      "nan": 0,
+      "hang": false
+    }
+  },
+  "pr_wrapper_runtime_smoke": {
+    "data": "real indexed training data",
+    "steps": "1/1",
+    "launcher_rc": 0,
+    "loss": 12.23689,
+    "grad_norm": 52.501,
+    "skip": 0,
+    "nan": 0,
+    "precommit_failures": [
+      "iteration 0: pinned Megatron pre_forward_comm accepts only input, not wait_current_stream",
+      "iteration 0: pinned Megatron has no SharedExpertMLP.wait_current_stream method"
+    ],
+    "interpretation": "The final wrapper passed after removing assumptions about newer method signatures; the two failed precommit runs are not performance or correctness evidence"
+  },
+  "full_run_memory_mib": {
+    "A_then_B": {
+      "A_max_allocated": 69951.764,
+      "A_max_reserved": 74430,
+      "B_max_allocated": 71688.539,
+      "B_max_reserved": 74928
+    },
+    "B_then_A": {
+      "A_max_allocated": 69941.102,
+      "A_max_reserved": 74592,
+      "B_max_allocated": 71687.161,
+      "B_max_reserved": 74930
+    }
+  },
+  "trace": {
+    "A": {
+      "review_file": "A.review.trace.json.gz",
+      "review_sha256": "f2a2257677921c1071e9f7cc9ef2a509692d85a3a4112283aab1794ec9806f4a",
+      "review_bytes": 36954102,
+      "raw_filename": "rank0.1789095390604.pt.trace.json.gz",
+      "raw_sha256": "0c19636ef73c8a9927c2bfc05828fb6dd06fce620dce2b66952511f35a02cce3",
+      "raw_bytes": 164103792
+    },
+    "B": {
+      "review_file": "B.review.trace.json.gz",
+      "review_sha256": "a3c46392bdbd5a7b1b54aeebe981a8623650d78dd0c090dcc119326aff5563f7",
+      "review_bytes": 36854995,
+      "raw_filename": "rank0.1789095778273.pt.trace.json.gz",
+      "raw_sha256": "f7689ede87aaea0cdd40ac52cc3fd74091d57a703f8b2006f597ff9e63d7c1df",
+      "raw_bytes": 170743858
+    },
+    "review_scope": "Filtered review artifacts, not raw traces: all non-Python events, optimization-related Python frames, original timestamps/correlation/stream; tensor metadata and absolute installation paths removed",
+    "metrics_seconds": {
+      "A_device_span": 48.092580,
+      "B_device_span": 47.778596,
+      "A_device_busy_union": 46.385290,
+      "B_device_busy_union": 46.051411,
+      "A_gap_over_100us": 0.696247,
+      "B_gap_over_100us": 0.704146,
+      "A_stream0_busy": 32.984835,
+      "B_stream0_busy": 32.685092,
+      "A_deepep_stream5_busy": 7.008463,
+      "B_deepep_stream5_busy": 6.049945,
+      "A_cached_notify_combine": 3.603463,
+      "B_cached_notify_combine": 2.574461,
+      "A_tp_sp_stream18_busy": 5.264307,
+      "B_tp_sp_stream18_busy": 5.830193,
+      "A_deepep_gemm_overlap": 0,
+      "B_deepep_gemm_overlap": 0
+    },
+    "collectives": {
+      "A_allgather_count": 2752,
+      "B_allgather_count": 2320,
+      "A_allgather_seconds": 3.166814,
+      "B_allgather_seconds": 2.701724,
+      "A_reducescatter_count": 1824,
+      "B_reducescatter_count": 1824,
+      "A_reducescatter_seconds": 2.092927,
+      "B_reducescatter_seconds": 3.123185
+    }
+  },
+  "limitations": [
+    "No 200-step long-run validation yet",
+    "B increases peak allocated memory by about 1.70 GiB",
+    "Trace shows zero DeepEP x GEMM device overlap; this is a state-machine and critical-path optimization, not proven compute/communication overlap",
+    "Runtime A/B used the common PR #8-#11 stack; this PR is submitted independently from the default branch"
+  ]
+}
