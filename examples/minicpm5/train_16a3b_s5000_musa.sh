@@ -474,9 +474,13 @@ if [[ "${ENABLE_DEEPEP_ENV:-0}" -eq 1 ]]; then
   export MUSA_COMPACT_PERMUTE="${MUSA_COMPACT_PERMUTE:-1}"
   OPT_ARGS+=("deepep_env")
 fi
-# 8. shared-expert-overlap (DS #8). Megatron vanilla requires alltoall; flex/DeepEP
-#    will reject at config. Kept as a toggle so the failure is explicit.
-if [[ "${ENABLE_SHARED_EXPERT_OVERLAP:-0}" -eq 1 ]]; then
+# 8. MUSA-safe Flex/DeepEP shared-expert explicit TP/SP state machine.
+#    The legacy toggle below remains available for the vanilla validation path.
+if [[ "${ENABLE_FLEX_SHARED_EXPERT_EAGER:-0}" -eq 1 ]]; then
+  export MUSA_FLEX_SHARED_EXPERT_EAGER=1
+  MOE_ARGS+=(--moe-shared-expert-overlap)
+  OPT_ARGS+=("flex_shared_expert_eager")
+elif [[ "${ENABLE_SHARED_EXPERT_OVERLAP:-0}" -eq 1 ]]; then
   MOE_ARGS+=(--moe-shared-expert-overlap)
   OPT_ARGS+=("shared_expert_overlap")
 fi
