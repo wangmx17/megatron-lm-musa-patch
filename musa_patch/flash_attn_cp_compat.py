@@ -26,10 +26,152 @@ time; ``musa_patch/__init__.py`` imports this module first in
 """
 
 import logging
+import os
+import sys
 
 import torch
 
+try:
+    import triton
+    import triton.language as tl
+except ImportError:  # pragma: no cover - the MUSA training image provides Triton
+    triton = None
+    tl = None
+
 logger = logging.getLogger(__name__)
+
+
+if triton is not None:
+
+    @triton.jit
+    def _thd_second_half_lse_correction_fp32_kernel(
+        lse_ptr,
+        lse_per_step_ptr,
+        half_seqlen: tl.constexpr,
+        lse_seqlen: tl.constexpr,
+        lse_per_step_seqlen: tl.constexpr,
+        n_elements,
+        BLOCK_SIZE: tl.constexpr,
+    ):
+        """Merge the fp32 cast/correction/cast chain into one fp32 kernel."""
+        offsets = tl.program_id(0) * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
+        mask = offsets < n_elements
+        row = offsets // half_seqlen
+        col = offsets - row * half_seqlen
+        lse_offsets = row * lse_seqlen + half_seqlen + col
+        step_offsets = row * lse_per_step_seqlen + col
+
+        current = tl.load(lse_ptr + lse_offsets, mask=mask).to(tl.float32)
+        update = tl.load(lse_per_step_ptr + step_offsets, mask=mask).to(tl.float32)
+        max_value = tl.maximum(current, update)
+        min_value = tl.minimum(current, update)
+        corrected = max_value + tl.log(1.0 + tl.exp(min_value - max_value))
+        tl.store(lse_ptr + lse_offsets, corrected, mask=mask)
+
+
+def _can_use_thd_lse_fp32_fusion(lse, lse_per_step, cu_seqlens, lse_packed):
+    """Return whether the current single-sequence THD layout fits the fused kernel."""
+    del lse_packed  # packed and non-packed layouts are identical when batch == 1.
+    if triton is None:
+        return False
+    if not (isinstance(lse, torch.Tensor) and isinstance(lse_per_step, torch.Tensor)):
+        return False
+    if lse.device.type != "musa" or lse_per_step.device != lse.device:
+        return False
+    if lse.dtype != torch.float32 or lse_per_step.dtype != torch.float32:
+        return False
+    if not (lse.is_contiguous() and lse_per_step.is_contiguous()):
+        return False
+    if lse.dim() not in (2, 3) or lse_per_step.dim() != lse.dim():
+        return False
+    if lse.dim() == 3 and (lse.size(0) != 1 or lse_per_step.size(0) != 1):
+        return False
+    if not isinstance(cu_seqlens, torch.Tensor):
+        return False
+    if cu_seqlens.device != lse.device or cu_seqlens.dtype != torch.int32:
+        return False
+    if cu_seqlens.dim() != 1 or cu_seqlens.numel() != 2:
+        return False
+    if lse.shape[:-1] != lse_per_step.shape[:-1]:
+        return False
+    lse_seqlen = lse.size(-1)
+    return lse_seqlen > 0 and lse_seqlen % 2 == 0 and lse_per_step.size(-1) >= lse_seqlen // 2
+
+
+def _run_thd_lse_fp32_fusion(lse, lse_per_step):
+    lse_seqlen = lse.size(-1)
+    half_seqlen = lse_seqlen // 2
+    rows = lse.numel() // lse_seqlen
+    n_elements = rows * half_seqlen
+    block_size = 256
+    _thd_second_half_lse_correction_fp32_kernel[
+        (triton.cdiv(n_elements, block_size),)
+    ](
+        lse,
+        lse_per_step,
+        half_seqlen,
+        lse_seqlen,
+        lse_per_step.size(-1),
+        n_elements,
+        BLOCK_SIZE=block_size,
+        num_warps=4,
+    )
+
+
+def install_te_thd_aux_fusion(te_attention_module):
+    """Install the TE THD LSE compatibility path and optional fused fastpath.
+
+    Transformer Engine's MUSA extension requires a float64 aggregate LSE while the
+    MUSA FlashAttention path produces float32.  The compatibility path therefore
+    launches fp32->fp64, correction, fp64->fp32, and copy kernels on every CP step.
+    ``MUSA_FA_AUX_FUSION=1`` replaces that chain for the current single-sequence
+    THD shape with one in-place fp32 Triton kernel.  Every unsupported layout keeps
+    the established conversion path.
+    """
+    tex = getattr(te_attention_module, "tex", None)
+    original = getattr(tex, "thd_second_half_lse_correction", None)
+    if original is None or getattr(original, "_musa_aux_fusion_wrapper", False):
+        return
+
+    enabled = os.getenv("MUSA_FA_AUX_FUSION", "0") == "1"
+    first_hit = [True]
+
+    def _thd_second_half_lse_correction(lse, lse_per_step, cu_seqlens, lse_packed):
+        if enabled and _can_use_thd_lse_fp32_fusion(
+            lse, lse_per_step, cu_seqlens, lse_packed
+        ):
+            _run_thd_lse_fp32_fusion(lse, lse_per_step)
+            if first_hit[0]:
+                logger.warning(
+                    "[musa_patch] FlashAttention THD auxiliary fp32 fusion reached "
+                    "for shape=%s, per_step_shape=%s",
+                    tuple(lse.shape),
+                    tuple(lse_per_step.shape),
+                )
+                first_hit[0] = False
+            return None
+
+        if lse is not None and lse.dtype != torch.float64:
+            lse_double = lse.to(torch.float64)
+            out = original(lse_double, lse_per_step, cu_seqlens, lse_packed)
+            lse.copy_(lse_double.to(dtype=lse.dtype))
+            return out
+        return original(lse, lse_per_step, cu_seqlens, lse_packed)
+
+    _thd_second_half_lse_correction._musa_aux_fusion_wrapper = True
+    tex.thd_second_half_lse_correction = _thd_second_half_lse_correction
+    logger.info(
+        "[musa_patch] FlashAttention THD auxiliary fusion installed (enabled=%s)", enabled
+    )
+
+
+def _maybe_install_te_thd_aux_fusion():
+    """Install lazily after TE has bound the patched FlashAttention entry point."""
+    if os.getenv("MUSA_FA_AUX_FUSION", "0") != "1":
+        return
+    te_attention = sys.modules.get("transformer_engine.pytorch.attention")
+    if te_attention is not None:
+        install_te_thd_aux_fusion(te_attention)
 
 
 def _install_flash_attn_cp_compat():
@@ -52,6 +194,7 @@ def _install_flash_attn_cp_compat():
         *args,
         **kwargs,
     ):
+        _maybe_install_te_thd_aux_fusion()
         out, softmax_lse, S_dmask, rng_state = _orig_varlen_forward(
             q,
             k,
@@ -80,6 +223,7 @@ def _install_flash_attn_cp_compat():
     _orig_varlen_backward = getattr(_fai, "_flash_attn_varlen_backward", None)
 
     def _patched_flash_attn_varlen_backward(*args, **kwargs):
+        _maybe_install_te_thd_aux_fusion()
         kwargs.setdefault("softcap", 0.0)
         return _orig_varlen_backward(*args, **kwargs)
 
