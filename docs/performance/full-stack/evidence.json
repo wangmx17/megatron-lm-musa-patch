@@ -1,0 +1,718 @@
+{
+  "scope": "Four submitted optimizations together versus the original stack; independent 20-step A/B",
+  "timing": "Non-profiler step 2-20 arithmetic mean; trace run timing excluded",
+  "gradient_scope": "Per-step training grad norm, not elementwise full-model gradients",
+  "cases": {
+    "A_all_perf20": {
+      "complete": true,
+      "launcher_rc": 0,
+      "error": null,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64666.5,
+          "loss": 12.23474,
+          "grad_norm": 53.068,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49218.3,
+          "loss": 12.25905,
+          "grad_norm": 52.463,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 48903.6,
+          "loss": 12.24582,
+          "grad_norm": 50.487,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 49044.2,
+          "loss": 12.21504,
+          "grad_norm": 52.088,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 49014.3,
+          "loss": 12.18511,
+          "grad_norm": 54.617,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48940.3,
+          "loss": 12.08921,
+          "grad_norm": 52.725,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 7,
+          "iter_ms": 48939.3,
+          "loss": 11.98119,
+          "grad_norm": 49.696,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 8,
+          "iter_ms": 48768.2,
+          "loss": 11.84725,
+          "grad_norm": 47.542,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 9,
+          "iter_ms": 48784.3,
+          "loss": 11.67683,
+          "grad_norm": 44.439,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 10,
+          "iter_ms": 48960.1,
+          "loss": 11.52705,
+          "grad_norm": 44.13,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 11,
+          "iter_ms": 48923.0,
+          "loss": 11.4264,
+          "grad_norm": 40.183,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 12,
+          "iter_ms": 48914.7,
+          "loss": 11.27656,
+          "grad_norm": 38.385,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 13,
+          "iter_ms": 48868.2,
+          "loss": 11.21092,
+          "grad_norm": 33.053,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 14,
+          "iter_ms": 48947.4,
+          "loss": 11.04598,
+          "grad_norm": 28.869,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 15,
+          "iter_ms": 49012.3,
+          "loss": 10.96125,
+          "grad_norm": 43.616,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 16,
+          "iter_ms": 48979.8,
+          "loss": 10.88757,
+          "grad_norm": 45.498,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 17,
+          "iter_ms": 49099.7,
+          "loss": 10.83236,
+          "grad_norm": 49.487,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 18,
+          "iter_ms": 49448.8,
+          "loss": 10.7213,
+          "grad_norm": 37.328,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 19,
+          "iter_ms": 48955.6,
+          "loss": 10.63683,
+          "grad_norm": 32.711,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 20,
+          "iter_ms": 48972.2,
+          "loss": 10.59491,
+          "grad_norm": 23.151,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 71646.20751953125,
+          "reserved_mib": 74916.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 68547.1171875,
+          "reserved_mib": 72722.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 67839.5361328125,
+          "reserved_mib": 72502.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 70711.53662109375,
+          "reserved_mib": 74664.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 67637.09033203125,
+          "reserved_mib": 71622.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66804.283203125,
+          "reserved_mib": 70786.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 71782.8466796875,
+          "reserved_mib": 74718.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 67775.7958984375,
+          "reserved_mib": 72122.0
+        }
+      ],
+      "mean_iter_ms_excluding_first": 48983.91052631579
+    },
+    "B_all_perf20": {
+      "complete": true,
+      "launcher_rc": 0,
+      "error": null,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64824.4,
+          "loss": 12.23475,
+          "grad_norm": 53.068,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 48272.1,
+          "loss": 12.25904,
+          "grad_norm": 52.465,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 47981.7,
+          "loss": 12.24598,
+          "grad_norm": 50.486,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 47980.1,
+          "loss": 12.215,
+          "grad_norm": 52.084,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48102.7,
+          "loss": 12.18511,
+          "grad_norm": 54.617,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48015.6,
+          "loss": 12.08917,
+          "grad_norm": 52.717,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 7,
+          "iter_ms": 48002.5,
+          "loss": 11.98121,
+          "grad_norm": 49.695,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 8,
+          "iter_ms": 47858.1,
+          "loss": 11.84741,
+          "grad_norm": 47.544,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 9,
+          "iter_ms": 47859.0,
+          "loss": 11.67678,
+          "grad_norm": 44.441,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 10,
+          "iter_ms": 48068.1,
+          "loss": 11.52696,
+          "grad_norm": 44.126,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 11,
+          "iter_ms": 47930.2,
+          "loss": 11.42635,
+          "grad_norm": 40.184,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 12,
+          "iter_ms": 48059.8,
+          "loss": 11.27656,
+          "grad_norm": 38.39,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 13,
+          "iter_ms": 47953.5,
+          "loss": 11.21095,
+          "grad_norm": 33.05,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 14,
+          "iter_ms": 47943.2,
+          "loss": 11.04598,
+          "grad_norm": 28.874,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 15,
+          "iter_ms": 48016.9,
+          "loss": 10.96082,
+          "grad_norm": 43.441,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 16,
+          "iter_ms": 47973.5,
+          "loss": 10.8875,
+          "grad_norm": 45.529,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 17,
+          "iter_ms": 48146.9,
+          "loss": 10.83224,
+          "grad_norm": 49.371,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 18,
+          "iter_ms": 48059.1,
+          "loss": 10.72107,
+          "grad_norm": 37.253,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 19,
+          "iter_ms": 48007.4,
+          "loss": 10.63667,
+          "grad_norm": 32.742,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 20,
+          "iter_ms": 48060.7,
+          "loss": 10.59492,
+          "grad_norm": 23.187,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 71694.8349609375,
+          "reserved_mib": 74850.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 68590.974609375,
+          "reserved_mib": 72796.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 67892.705078125,
+          "reserved_mib": 72092.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 70746.33837890625,
+          "reserved_mib": 74674.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 67681.275390625,
+          "reserved_mib": 71914.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66849.51318359375,
+          "reserved_mib": 71454.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 71814.53466796875,
+          "reserved_mib": 74844.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 67823.81884765625,
+          "reserved_mib": 72190.0
+        }
+      ],
+      "mean_iter_ms_excluding_first": 48015.32105263158
+    },
+    "A_all_trace": {
+      "complete": true,
+      "launcher_rc": 0,
+      "error": null,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64277.2,
+          "loss": 12.23689,
+          "grad_norm": 52.5,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 49794.0,
+          "loss": 12.24329,
+          "grad_norm": 54.446,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 49474.9,
+          "loss": 12.24909,
+          "grad_norm": 50.737,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 82069.0,
+          "loss": 12.22229,
+          "grad_norm": 54.524,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 48948.3,
+          "loss": 12.18205,
+          "grad_norm": 49.436,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48949.2,
+          "loss": 12.08887,
+          "grad_norm": 54.468,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69815.0537109375,
+          "reserved_mib": 74014.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66716.6640625,
+          "reserved_mib": 70940.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66598.81640625,
+          "reserved_mib": 70558.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68761.85791015625,
+          "reserved_mib": 72782.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 68576.53515625,
+          "reserved_mib": 72760.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66460.7255859375,
+          "reserved_mib": 70762.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69938.2724609375,
+          "reserved_mib": 73638.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68757.927734375,
+          "reserved_mib": 72440.0
+        }
+      ]
+    },
+    "B_all_trace": {
+      "complete": true,
+      "launcher_rc": 0,
+      "error": null,
+      "source_restore_match": true,
+      "rows": [
+        {
+          "step": 1,
+          "iter_ms": 64615.5,
+          "loss": 12.23688,
+          "grad_norm": 52.5,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 2,
+          "iter_ms": 48756.9,
+          "loss": 12.24329,
+          "grad_norm": 54.446,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 3,
+          "iter_ms": 48083.7,
+          "loss": 12.24902,
+          "grad_norm": 50.735,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 4,
+          "iter_ms": 80560.3,
+          "loss": 12.22232,
+          "grad_norm": 54.526,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 5,
+          "iter_ms": 47980.9,
+          "loss": 12.18211,
+          "grad_norm": 49.439,
+          "skip": 0,
+          "nan": 0
+        },
+        {
+          "step": 6,
+          "iter_ms": 48075.6,
+          "loss": 12.08883,
+          "grad_norm": 54.469,
+          "skip": 0,
+          "nan": 0
+        }
+      ],
+      "full_run_memory": [
+        {
+          "rank": 7,
+          "allocated_mib": 69848.9228515625,
+          "reserved_mib": 74072.0
+        },
+        {
+          "rank": 6,
+          "allocated_mib": 66752.2314453125,
+          "reserved_mib": 70992.0
+        },
+        {
+          "rank": 3,
+          "allocated_mib": 66637.8544921875,
+          "reserved_mib": 70612.0
+        },
+        {
+          "rank": 5,
+          "allocated_mib": 68813.2509765625,
+          "reserved_mib": 72852.0
+        },
+        {
+          "rank": 2,
+          "allocated_mib": 68631.0595703125,
+          "reserved_mib": 72872.0
+        },
+        {
+          "rank": 4,
+          "allocated_mib": 66500.43896484375,
+          "reserved_mib": 70812.0
+        },
+        {
+          "rank": 1,
+          "allocated_mib": 69964.1982421875,
+          "reserved_mib": 73732.0
+        },
+        {
+          "rank": 0,
+          "allocated_mib": 68796.5947265625,
+          "reserved_mib": 72492.0
+        }
+      ]
+    }
+  },
+  "comparisons": {
+    "perf20": {
+      "max_loss_rel": 3.9229102520215157e-05,
+      "max_grad_norm_rel": 0.004012289068231777,
+      "iter_reduction_pct": 1.977362491636614
+    },
+    "trace": {
+      "max_loss_rel": 5.7147102356911955e-06,
+      "max_grad_norm_rel": 6.068452140141018e-05
+    }
+  },
+  "traces": {
+    "A": {
+      "source_filename": "rank0.1789054089122.pt.trace.json.gz",
+      "source_file_sha256": "b8f6e64f33f09d3033f439b0d813bd778fee58173701426f2ce271b0b35a37fe",
+      "source_bytes": 162871135,
+      "review_filename": "A.review.trace.json.gz",
+      "review_bytes": 46942643,
+      "review_sha256": "2c0b5d6fe966066b22300d3bfb89835ff382fec8d79fae9fe5e1e480f42fac45",
+      "scope": "Filtered review artifact, NOT the unmodified full trace. All categories except unrelated Python frames retained; original timestamps/correlation IDs retained; args restricted; names use relative code paths.",
+      "original_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1078802,
+        "fwdbwd": 43104,
+        "python_function": 3300159,
+        "privateuse1_runtime": 504495,
+        "ac2g": 722481,
+        "gpu_memcpy": 7734,
+        "kernel": 205534,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 782,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      },
+      "retained_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 1078802,
+        "fwdbwd": 43104,
+        "python_function": 255038,
+        "privateuse1_runtime": 504495,
+        "ac2g": 722481,
+        "gpu_memcpy": 7734,
+        "kernel": 205534,
+        "privateuse1_driver": 3936,
+        "gpu_memset": 782,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      }
+    },
+    "B": {
+      "source_filename": "rank0.1789054466535.pt.trace.json.gz",
+      "source_file_sha256": "7144a8004b3a55eddcf71c683bd041b9563c1424174c19d48436c4466c809ac4",
+      "source_bytes": 164161349,
+      "review_filename": "B.review.trace.json.gz",
+      "review_bytes": 36937466,
+      "review_sha256": "67340ef0ebe089403f75eb1543c71a70740dd49aa30492fb393ed93f718d672b",
+      "scope": "Filtered review artifact, NOT the unmodified full trace. All categories except unrelated Python frames retained; original timestamps/correlation IDs retained; args restricted; names use relative code paths.",
+      "original_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 721550,
+        "fwdbwd": 42240,
+        "python_function": 3768005,
+        "privateuse1_runtime": 451371,
+        "ac2g": 607889,
+        "gpu_memcpy": 2470,
+        "kernel": 144748,
+        "privateuse1_driver": 8384,
+        "gpu_memset": 916,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      },
+      "retained_category_counts": {
+        "user_annotation": 11025,
+        "cpu_op": 721550,
+        "fwdbwd": 42240,
+        "python_function": 269408,
+        "privateuse1_runtime": 451371,
+        "ac2g": 607889,
+        "gpu_memcpy": 2470,
+        "kernel": 144748,
+        "privateuse1_driver": 8384,
+        "gpu_memset": 916,
+        "gpu_user_annotation": 11000,
+        "": 92,
+        "Trace": 1
+      }
+    }
+  },
+  "trace_analysis": "trace_analysis.json",
+  "restoration": "restoration.json"
+}
