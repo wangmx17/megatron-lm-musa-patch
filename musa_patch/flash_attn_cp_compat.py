@@ -41,6 +41,22 @@ except ImportError:  # pragma: no cover - the MUSA training image provides Trito
 logger = logging.getLogger(__name__)
 
 
+def get_te_thd_lse_fp32_mode():
+    """Return the requested TE THD LSE fp32 mode.
+
+    ``auto`` uses native fp32 when the installed TE advertises support,
+    ``require`` additionally fails fast when that support is unavailable, and
+    ``disable`` forces the established fp64 compatibility path for A/B tests.
+    """
+    mode = os.getenv("MUSA_TE_THD_LSE_FP32", "auto").strip().lower()
+    if mode not in ("auto", "require", "disable"):
+        raise RuntimeError(
+            "MUSA_TE_THD_LSE_FP32 must be one of: auto, require, disable; "
+            f"got {mode!r}"
+        )
+    return mode
+
+
 if triton is not None:
 
     @triton.jit
@@ -121,16 +137,29 @@ def _run_thd_lse_fp32_fusion(lse, lse_per_step):
 def install_te_thd_aux_fusion(te_attention_module):
     """Install the TE THD LSE compatibility path and optional fused fastpath.
 
-    Transformer Engine's MUSA extension requires a float64 aggregate LSE while the
-    MUSA FlashAttention path produces float32.  The compatibility path therefore
-    launches fp32->fp64, correction, fp64->fp32, and copy kernels on every CP step.
-    ``MUSA_FA_AUX_FUSION=1`` replaces that chain for the current single-sequence
-    THD shape with one in-place fp32 Triton kernel.  Every unsupported layout keeps
-    the established conversion path.
+    A Transformer Engine build advertising native fp32 support is already the
+    preferred path and needs no wrapper.  Older MUSA builds require a float64
+    aggregate LSE while FlashAttention produces float32, so their compatibility
+    path launches fp32->fp64, correction, fp64->fp32, and copy kernels on every CP
+    step. ``MUSA_FA_AUX_FUSION=1`` replaces that chain for the current
+    single-sequence THD shape with one in-place fp32 Triton kernel. Every
+    unsupported layout keeps the established conversion path.
     """
     tex = getattr(te_attention_module, "tex", None)
     original = getattr(tex, "thd_second_half_lse_correction", None)
     if original is None or getattr(original, "_musa_aux_fusion_wrapper", False):
+        return
+    mode = get_te_thd_lse_fp32_mode()
+    has_native_fp32 = bool(getattr(tex, "NVTE_MUSA_THD_LSE_FP32", False))
+    if mode == "require" and not has_native_fp32:
+        raise RuntimeError(
+            "MUSA_TE_THD_LSE_FP32=require, but Transformer Engine does not "
+            "advertise native THD LSE fp32 support"
+        )
+    if has_native_fp32 and mode != "disable":
+        logger.info(
+            "[musa_patch] Transformer Engine provides native THD LSE fp32 support"
+        )
         return
 
     enabled = os.getenv("MUSA_FA_AUX_FUSION", "0") == "1"

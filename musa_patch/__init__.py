@@ -29,7 +29,19 @@ def patch_before_import_megatron():
     _te_attn_lse._flash_attn_2_7_0_plus = False
     _flash_attn_version = _te_attn_lse._flash_attn_version
     _orig_thd_lse = getattr(getattr(_te_attn_lse, "tex", None), "thd_second_half_lse_correction", None)
-    if _orig_thd_lse is not None:
+    _te_has_native_thd_lse_fp32 = bool(
+        getattr(getattr(_te_attn_lse, "tex", None), "NVTE_MUSA_THD_LSE_FP32", False)
+    )
+    _te_thd_lse_fp32_mode = flash_attn_cp_compat.get_te_thd_lse_fp32_mode()
+    if _te_thd_lse_fp32_mode == "require" and not _te_has_native_thd_lse_fp32:
+        raise RuntimeError(
+            "MUSA_TE_THD_LSE_FP32=require, but Transformer Engine does not "
+            "advertise native THD LSE fp32 support"
+        )
+    _te_use_native_thd_lse_fp32 = (
+        _te_has_native_thd_lse_fp32 and _te_thd_lse_fp32_mode != "disable"
+    )
+    if _orig_thd_lse is not None and not _te_use_native_thd_lse_fp32:
         def _thd_second_half_lse_correction(lse, lse_per_step, cu_seqlens, lse_packed):
             if lse is not None and lse.dtype != torch.float64:
                 lse_d = lse.to(torch.float64)
@@ -265,5 +277,3 @@ if os.getenv("ENABLE_ZERO_BUBBLE", "0") == "1":
     zbb_light.patch_megatron()
 
 patch_before_import_megatron()
-
-
