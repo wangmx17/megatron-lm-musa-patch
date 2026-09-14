@@ -86,22 +86,22 @@
   },
   "trace": {
     "A": {
-      "review_file": "A.review.trace.json.gz",
-      "review_sha256": "f2a2257677921c1071e9f7cc9ef2a509692d85a3a4112283aab1794ec9806f4a",
-      "review_bytes": 36954102,
+      "screenshot_file": "A.perfetto.streams.jpg",
+      "screenshot_sha256": "1675bb882eed59dc9358554b142c2a66206e107e32d2e779e046dbdea4ceb14d",
+      "screenshot_bytes": 82188,
       "raw_filename": "rank0.1789095390604.pt.trace.json.gz",
       "raw_sha256": "0c19636ef73c8a9927c2bfc05828fb6dd06fce620dce2b66952511f35a02cce3",
       "raw_bytes": 164103792
     },
     "B": {
-      "review_file": "B.review.trace.json.gz",
-      "review_sha256": "a3c46392bdbd5a7b1b54aeebe981a8623650d78dd0c090dcc119326aff5563f7",
-      "review_bytes": 36854995,
+      "screenshot_file": "B.perfetto.streams.jpg",
+      "screenshot_sha256": "473fe3dc2690c7a1491de8fe9c83443e09fa20207ec92f514e89b34c4aef7452",
+      "screenshot_bytes": 82649,
       "raw_filename": "rank0.1789095778273.pt.trace.json.gz",
       "raw_sha256": "f7689ede87aaea0cdd40ac52cc3fd74091d57a703f8b2006f597ff9e63d7c1df",
       "raw_bytes": 170743858
     },
-    "review_scope": "Filtered review artifacts, not raw traces: all non-Python events, optimization-related Python frames, original timestamps/correlation/stream; tensor metadata and absolute installation paths removed",
+    "review_scope": "The PR uploads only A/B Perfetto screenshots of the comparable stream 0/5/18 view and machine-readable extracted metrics; complete and filtered trace files are not PR artifacts",
     "metrics_seconds": {
       "A_device_span": 48.092580,
       "B_device_span": 47.778596,

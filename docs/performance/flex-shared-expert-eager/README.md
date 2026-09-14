@@ -175,13 +175,20 @@ stream 18 的 AllGather 从 `2752 / 3.166814 s` 变为 `2320 / 2.701724 s`，
 因此 PR 名称使用“eager explicit TP/SP state machine”，不把约 0.58% 收益包装成
 不存在的 device compute/communication overlap。
 
-[A Perfetto 审查 Trace](A.review.trace.json.gz) ·
-[B Perfetto 审查 Trace](B.review.trace.json.gz) ·
-[机器可读证据](evidence.json)
+PR 不上传完整或裁剪后的 Trace 文件，只提交下面两张同类轨道的 Perfetto 截图和
+[机器可读证据](evidence.json)。截图用于直观看到主计算 stream 0、DeepEP stream 5
+与 TP/SP stream 18 的调度形态；精确计数和时长以 `evidence.json` 为准。
 
-公开 Trace 是裁剪副本，不是原始文件：保留全部非 Python 事件、相关 Python frame、
-原始时间戳、correlation 和 stream；移除无关 Python frame、tensor 元数据与绝对
-安装路径。原始文件 SHA256、大小和裁剪文件 SHA256 记录在 `evidence.json`。
+**A：关闭本项**
+
+![A 组 Perfetto：stream 0、5、18](A.perfetto.streams.jpg)
+
+**B：打开本项**
+
+![B 组 Perfetto：stream 0、5、18](B.perfetto.streams.jpg)
+
+原始 Trace 只在测试环境留存，未作为 PR artifact 上传。`evidence.json` 仅保留原始
+文件名、SHA256、大小、截图校验值和已提取的统计结果，便于追溯而不增加仓库体积。
 
 ## PR 包装层运行时验收
 
