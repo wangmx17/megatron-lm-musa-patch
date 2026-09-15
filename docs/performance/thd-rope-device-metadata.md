@@ -1,4 +1,4 @@
-# MUSA device-side metadata for packed THD RoPE
+# MUSA device-side metadata with a cached fallback for packed THD RoPE
 
 ## Motivation
 
@@ -14,10 +14,11 @@ token to its context-parallel position and gathers a contiguous frequency
 tensor. Native `torch.rope` then processes the complete local THD tensor in one
 call. The native RoPE forward and backward kernels are unchanged.
 
-The fast path is enabled by default for supported MUSA tensors. Set
-`MUSA_THD_ROPE_DEVICE_METADATA=0` before importing `musa_patch` to restore the
-existing split/list implementation. Unsupported layouts automatically fall
-back to the existing path.
+The combined implementation retains the bounded CPU metadata cache as the
+fallback for the fused and unfused THD paths. The MUSA fast path is enabled by
+default for supported tensors. Set `MUSA_THD_ROPE_DEVICE_METADATA=0` before
+importing `musa_patch` to use the split implementation with cached CPU sequence
+lengths. Unsupported layouts automatically select the same cached fallback.
 
 ## Correctness coverage
 
@@ -95,7 +96,9 @@ The optimized path requires MUSA tensors, contiguous int32 `cu_seqlens`,
 and frequencies that do not require gradients. Packed sequence lengths must
 obey Megatron's CP divisibility and symmetric two-chunk layout contract.
 
-Unsupported inputs retain the previous implementation. Current native MUSA
-`torch.rope` rejects partial rotary dimensions, so they deliberately do not
-select this fast path. Long-run convergence, additional dtypes, malformed
-sequence boundaries and other CP layouts remain outside this validation.
+Unsupported inputs retain the split implementation and use the bounded CPU
+metadata cache instead of repeating device-to-host sequence-length reads in
+every layer. Current native MUSA `torch.rope` rejects partial rotary dimensions,
+so they deliberately do not select the device fast path. Long-run convergence,
+additional dtypes, malformed sequence boundaries and other CP layouts remain
+outside this validation.
