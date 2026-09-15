@@ -18,6 +18,10 @@ from megatron.core import parallel_state
 from megatron.core.models.common.embeddings.rope_utils import (
     _get_thd_freqs_on_this_cp_rank,
 )
+from .thd_rope_device import (
+    apply_rotary_pos_emb_thd_torch_rope_device,
+    device_thd_rope_supported,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +141,15 @@ def apply_rotary_pos_emb_thd_torch_rope(
     cp_group: torch.distributed.ProcessGroup = None,
 ) -> Tensor:
     """THD RoPE via torch.rope; CP slices freqs like the unfused path."""
+    if device_thd_rope_supported(t, cu_seqlens, freqs):
+        return apply_rotary_pos_emb_thd_torch_rope_device(
+            t,
+            cu_seqlens,
+            freqs,
+            rotary_interleaved=rotary_interleaved,
+            cp_group=cp_group,
+        )
+
     if cp_group is not None and cp_group.size() > 1:
         cp_size = cp_group.size()
         cp_rank = cp_group.rank()
