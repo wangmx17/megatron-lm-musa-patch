@@ -71,6 +71,84 @@ THD tensor 一次调用原生 `torch.rope`。
 实现不能保证正确时保留兼容路径。如果当前 MiniCPM5 输入始终满足上述条件，实际
 训练会在函数开头进入 device fast path 并立即返回，CPU metadata cache 不会执行。
 
+## 为什么默认使用 CPU metadata cache 更稳妥
+
+这里的“更稳妥”不是指 CPU 能修复非法 THD/CP 数据。非法 sequence 边界、长度或
+CP 布局在 cached fallback 中同样可能导致 `torch.split` 报错或产生错误位置。
+CPU cache 的风险更低，是因为它基本保留了 Megatron 原来的 RoPE 数据流：
+
+```text
+计算 sequence lengths
+        ↓
+torch.split
+        ↓
+_get_thd_freqs_on_this_cp_rank
+        ↓
+每条 sequence 执行 torch.rope
+        ↓
+torch.cat
+```
+
+CPU metadata cache 只改变第一步的重复读取方式：
+
+```text
+第一次读取 CPU lengths
+        ↓
+相同 cu_seqlens 的后续访问复用
+        ↓
+其余 split、CP frequency 选择、RoPE 和 cat 逻辑保持不变
+```
+
+device fast path 则重新实现了一部分数据流：
+
+```text
+解析 cu_seqlens
+        ↓
+判断每个 token 属于哪条 sequence
+        ↓
+还原 CP 全局 position
+        ↓
+生成 mapped_freqs
+        ↓
+对完整本地 THD tensor 执行 torch.rope
+```
+
+因此 device fast path 额外引入了这些风险面：
+
+- 重新实现 CP token-position 映射；
+- 只支持 full-RoPE；
+- 没有覆盖 `freqs` 的梯度；
+- 没有完整检查 `cu_seqlens` 内部数值和 CP 整除关系；
+- 增加 Triton gather kernel 和临时 `mapped_freqs` tensor；
+- 当前只有 28 组数值测试和 10-step 训练，没有长期训练验证；
+- 相对 CPU cache 的一次短 A/B 观察收益约为 0.263%，尚未证明统计显著。
+
+CPU cache 的安全优势是继续使用 Megatron 原来的
+`_get_thd_freqs_on_this_cp_rank()`，不重新实现 CP position 映射，支持范围与原
+路径基本一致。缓存还通过 `_version` 检测 tensor 的原地或别名修改，通过 weakref
+在 tensor 释放后清理条目，最多保留 64 项；inference tensor 无法安全获取 version
+时直接不缓存。
+
+CPU cache 仍然存在 device-to-host 同步，但通常不是整个训练只同步一次，而是每个
+microbatch 的 `cu_seqlens` 第一次访问时同步一次，随后该 microbatch 的所有
+Transformer 层复用：
+
+```text
+每个 microbatch 第一次访问 cu_seqlens
+        ↓
+读取一次 CPU lengths
+        ↓
+这个 microbatch 的所有 Transformer 层复用
+```
+
+已有采样中，每个 step 包含 16 个 microbatch：896 次各层查询只有 16 次真实读取，
+其余 880 次命中缓存。因此 CPU 同步已经被压缩到较低频率。
+
+从风险控制角度，更保守的策略是默认使用 CPU metadata cache，把 device fast path
+作为显式 opt-in。当前整合分支的代码默认值仍是
+`MUSA_THD_ROPE_DEVICE_METADATA=1`；本节记录的是风险与采用建议，并没有修改当前
+默认行为。
+
 ## 实际判断顺序
 
 ```text
