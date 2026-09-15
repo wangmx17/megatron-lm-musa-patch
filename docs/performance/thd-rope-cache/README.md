@@ -27,13 +27,11 @@ iter 均值下降 **0.461372%**。这是单次 A/B 的小幅均值差，**未证
 
 训练 grad norm 对照不是全模型逐元素梯度校验。`python test/test_thd_metadata_cache.py` 的四项 CPU 测试验证命中、原地/别名修改、生命周期/LRU 和 inference fallback，均通过。
 
-## Trace 证据
+## 采样分析摘要
 
-- [A：审查 trace](A.review.trace.json.gz)
-- [B：审查 trace](B.review.trace.json.gz)
-- [逐步数值、全 rank 峰值及文件哈希](evidence.json)
-
-附件为**明确裁剪的 Perfetto JSON**，不是未经修改的完整 trace：保留全部非 Python 事件，仅保留优化相关 Python frames；保留原时间戳、correlation、pid/tid 和 stream；删去其他 args，并将绝对源码路径改为代码相对路径。完整原件已保留，SHA256 记录在 evidence.json。下载 gzip 文件后可在 Perfetto 中打开；必要时先解压。
+本 PR 不再包含原始或裁剪后的 trace 附件，只保留分析结论和
+[逐步数值、全 rank 峰值及文件哈希](evidence.json)。下面的统计来自独立的
+rank0 采样运行，不参与性能均值计算。
 
 | 单个采样 step | A | B |
 |---|---:|---:|

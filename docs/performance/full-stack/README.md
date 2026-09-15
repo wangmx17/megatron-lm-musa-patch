@@ -36,7 +36,7 @@ B减少**0.968589s/iter，改善1.977362%**。最大逐step loss相对差**0.003
 
 各单项及完整栈是不同时间的独立短A/B，不能将百分比简单相加、相减或据此证明协同/冲突。前三项单次变化都很小；Muon机制和端到端变化更清楚，但仍需更长重复实验才能判断统计稳定性。历史200-step只有B组，不替代这里的完整A/B。
 
-## 完整栈 A/B trace
+## 完整栈 A/B 采样分析
 
 A/B另各独立运行6step，均6/6、rc=0、无skip/NaN；rank0第4step采集stack trace。Trace运行的iter不参与上述性能结论。最大逐step loss相对差0.000571471%，grad norm相对差0.006068452%。
 
@@ -52,8 +52,8 @@ A/B另各独立运行6step，均6/6、rc=0、无skip/NaN；rank0第4step采集st
 
 同时，`musaStreamSynchronize`调用数6375→2407，但host inclusive等待21.695458→30.731225s，说明等待向后续消费点迁移；inclusive时间互相嵌套，不能相加或直接当成iter收益。B最大单空泡40.716ms，另有11.142ms Muon临时stack/concat相关空泡，仍是后续线索。FA kernel本身不在四个PR范围内。
 
-[A审查trace](A.review.trace.json.gz) · [B审查trace](B.review.trace.json.gz) · [机器可读trace分析](trace_analysis.json) · [完整运行证据](evidence.json) · [恢复检查](restoration.json) · [运行环境与计时口径](RUNTIME_CONTEXT.md) · [源码来源](source_provenance.json)
+[机器可读采样分析](trace_analysis.json) · [完整运行证据](evidence.json) · [恢复检查](restoration.json) · [运行环境与计时口径](RUNTIME_CONTEXT.md) · [源码来源](source_provenance.json)
 
-两份审查trace是明确裁剪后的Perfetto JSON，不是原始完整trace：保留所有非Python事件、优化相关Python frame、原时间戳和correlation/stream，移除张量内容、无关Python frame及内部绝对路径。原件和附件SHA256见`trace_analysis.json`。
+本 PR 不再包含原始或裁剪后的 trace 附件，仅保留统计摘要和机器可读分析结果。
 
 四个PR保持draft，不自动合并；最终是否保留由审查者决定。
