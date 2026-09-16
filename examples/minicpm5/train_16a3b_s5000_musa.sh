@@ -87,7 +87,7 @@ export FORCE_MIN_LR=${FORCE_MIN_LR:-}
 export FORCE_ADAM_EPS=${FORCE_ADAM_EPS:-}
 
 MEGATRON_PATH=${MEGATRON_PATH:-/mbzz_ssd/modelbest_v0.19/Megatron-LM}
-export PYTHONPATH=${MEGATRON_PATH}:${PATCH_HOME}:${PYTHONPATH:-}
+export PYTHONPATH=${MEGATRON_PATH}:${PATCH_HOME}:/mbzz_ssd/modelbest_v0.19/emerging-optimizers:${PYTHONPATH:-}
 
 for required in "${MEGATRON_PATH}" "${PATCH_HOME}" "${WORK_HOME}" "${MODEL_PATH}"; do
   [[ -d "${required}" ]] || {
