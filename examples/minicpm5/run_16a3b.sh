@@ -13,6 +13,7 @@ cd "${WORK_HOME}"
 
 PATCH_HOME=${PATCH_HOME:-"${PATCH_REPO_ROOT}"}
 MEGATRON_PATH=${MEGATRON_PATH:-"${WORK_HOME}/Megatron-LM"}
+export PYTHONPATH="${WORK_HOME}/emerging-optimizers:${PYTHONPATH:-}"
 PRETRAIN_FILE=${PRETRAIN_FILE:-"${SCRIPT_DIR}/pretrain_minicpm5_musa.py"}
 HOSTFILE=${HOSTFILE:-"${WORK_HOME}/hostfile"}
 DATA_PATH=${DATA_PATH:-"${WORK_HOME}/data/minicpm5_real_part00071_text_document"}
