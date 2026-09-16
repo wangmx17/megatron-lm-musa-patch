@@ -31,6 +31,8 @@ from megatron.core.transformer.module import MegatronModule
 from megatron.core.optimizer.distrib_optimizer import DistributedOptimizer
 from megatron.core.optimizer.grad_scaler import ConstantGradScaler, DynamicGradScaler
 from megatron.core.optimizer.muon import Muon
+if os.getenv("MUON_TE_EXPERT_BATCH_NS", "0") == "1":
+    from .muon_expert_batch import MuonExpertBatch as Muon
 from megatron.core.optimizer import (
     Float16OptimizerWithFloat16Params,
     FP32Optimizer,
