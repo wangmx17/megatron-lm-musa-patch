@@ -1,0 +1,39 @@
+Megatron-LM*
+exp*
+llama2-test*
+output/
+logs/
+checkpoints/
+tboard/
+wandb/
+__pycache__/
+hostfile
+profiler_result/
+output_log/
+*.log
+*events.out*
+*snapshot.pickle
+# Compiled files
+*.py[cod]
+*$py.class
+
+build/
+downloads/
+eggs/
+.eggs/
+
+# tmp files
+.swp
+.swo
+
+# vscode files
+.vscode/
+
+# mccl log
+.mccl*
+
+# torch memory snapshot pickle files
+mem_snapshot/
+*.pkl
+
+*.mudmp
