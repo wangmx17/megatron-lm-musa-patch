@@ -76,20 +76,20 @@ def patch_before_import_megatron():
     if int(os.getenv("USE_DEEPEP_ACE", 0)):
         from . import deepep_ace
     from . import ce_te_stride
+    from . import v019_ce_compat
     from . import moe_router_fusion
 
     from . import core_pipeline_parallel_schedules
     from . import yarn_rotary_pos_embedding
     # Disable some unsupprted features
     # set_jit_fusion_options
-    def set_jit_fusion_options():
+    def set_jit_fusion_options(tp_size=None):
         pass
     import megatron.training.initialize
     megatron.training.training.set_jit_fusion_options = set_jit_fusion_options
     megatron.training.initialize.set_jit_fusion_options = set_jit_fusion_options
     # Disable fused_kernels
-    import megatron.legacy.fused_kernels
-    megatron.legacy.fused_kernels.load = lambda args : None
+    # v0.19 removed the legacy extension loader; do not import v0.16 modules.
     # Disable _compile_dependencies
     def _compile_dependencies():
         pass

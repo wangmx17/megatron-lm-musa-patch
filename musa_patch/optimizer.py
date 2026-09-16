@@ -1,289 +1,72 @@
-import logging
-import warnings
-from typing import Callable, Dict, List, Optional, Tuple
+"""Narrow MUSA optimizer compatibility hooks for Megatron Core 0.19."""
+
+from __future__ import annotations
 
 import os
+import warnings
+from typing import Any
+
+import megatron.core.optimizer as optimizer_module
 import torch
-from torch.optim import SGD as CPUSGD
+from packaging.version import Version
 
-try:
-    from transformer_engine.pytorch.optimizers import FusedAdam as Adam
-    from transformer_engine.pytorch.optimizers import FusedSGD as SGD
-except ImportError:
-    try:
-        from apex.optimizers import FusedAdam as Adam
-        from apex.optimizers import FusedSGD as SGD
-    except ImportError:
-        import warnings
-
-        warnings.warn(
-            f'Transformer Engine and Apex are not installed. Falling back to Torch optimizers.'
-        )
-
-        # Apex's FusedAdam is a drop-in replacement for torch's AdamW.
-        # pylint: disable-next=line-too-long.
-        # See https://github.com/NVIDIA/apex/blob/7b73b12361068a10b0f44844534613f252a5ea75/apex/optimizers/fused_adam.py#L16.
-        from torch.optim import AdamW as Adam, SGD
-
-from megatron.core.optimizer.cpu_offloading.hybrid_optimizer import HybridDeviceOptimizer
-from megatron.core.distributed.param_and_grad_buffer import _ParamAndGradBuffer
-from megatron.core.transformer.module import MegatronModule
-from megatron.core.optimizer.distrib_optimizer import DistributedOptimizer
-from megatron.core.optimizer.grad_scaler import ConstantGradScaler, DynamicGradScaler
-from megatron.core.optimizer.muon import Muon
-from megatron.core.optimizer import (
-    Float16OptimizerWithFloat16Params,
-    FP32Optimizer,
-    MegatronOptimizer,
+_ORIGINAL_GET_OPTIMIZER = getattr(
+    optimizer_module,
+    "_musa_original_get_megatron_optimizer_based_on_param_groups",
+    optimizer_module._get_megatron_optimizer_based_on_param_groups,
 )
-from megatron.core.optimizer.optimizer_config import OptimizerConfig
-from megatron.core.utils import is_te_min_version
+optimizer_module._musa_original_get_megatron_optimizer_based_on_param_groups = (
+    _ORIGINAL_GET_OPTIMIZER
+)
 
 
-logger = logging.getLogger(__name__)
+def _legacy_deepspeed_cpu_adam():
+    """Load the pre-PyTorch-2.3 CPU optimizer without CUDA probing loops."""
 
-def _get_megatron_optimizer_based_on_param_groups(
-    config: OptimizerConfig,
-    model_chunks: List[MegatronModule],
-    param_groups: List,
-    per_model_buffers: Optional[Dict[int, List[_ParamAndGradBuffer]]] = None,
-    model_parallel_group: Optional[torch.distributed.ProcessGroup] = None,
-    data_parallel_group: Optional[torch.distributed.ProcessGroup] = None,
-    data_parallel_group_gloo: Optional[torch.distributed.ProcessGroup] = None,
-    data_parallel_group_idx: Optional[int] = None,
-    intra_dist_opt_group: Optional[torch.distributed.ProcessGroup] = None,
-    distributed_optimizer_instance_id: Optional[int] = 0,
-) -> MegatronOptimizer:
-    """Get Megatron optimizer based on parameter groups.
+    original_is_available = torch.cuda.is_available
+    try:
+        torch.cuda.is_available = lambda: False
+        from deepspeed.ops.adam import DeepSpeedCPUAdam
 
-    Args:
-        config (OptimizerConfig): optimizer configuration object.
-        model_chunks (list): list of model chunks.
-        param_groups (list): list of parameter groups.
-        per_model_buffers (dict, optional): buffers for distributed optimizer. Defaults to None.
-        data_parallel_group (torch.distributed.ProcessGroup, optional): data-parallel group for
-            distributed optimizer. Defaults to None.
-        data_parallel_group_gloo (torch.distributed.ProcessGroup, optional): gloo data-parallel
-            group for distributed optimizer. Defaults to None.
-        data_parallel_group_idx (int, optional): data-parallel group index for distributed
-            optimizer. Defaults to None.
-        distributed_optimizer_instance_id (int, optional): Distributed optimizer instance. Defaults
-            0.
+        return DeepSpeedCPUAdam
+    except ImportError:
+        warnings.warn(
+            "DeepSpeedCPUAdam is unavailable; using Megatron's standard CPUAdam.",
+            stacklevel=2,
+        )
+        return None
+    finally:
+        torch.cuda.is_available = original_is_available
 
-    Returns:
-        Instance of MegatronOptimizer.
-    """
-    # when freezing sub-models we may have no trainable parameters on a rank and
-    # hence an empty param_groups. However, we still need to create an optimizer
-    # for the purposes of grad stats reductions
-    if param_groups:
-        if config.optimizer_cpu_offload:
-            if torch.__version__ < '2.3.0':
-                # is_available = lambda: False
-                # set cuda not available for complex cuda inspection
-                torch.cuda.is_available = lambda : False
-                # use DeepSpeedCPUAdam for better performance
-                from deepspeed.ops.adam import DeepSpeedCPUAdam as CPUAdam
-                # reset the cuda availability back to normal
-                torch.cuda.is_available = torch.musa.is_available
-                warnings.warn("We use DeepSpeedCPUAdam instead of torch.optim.AdamW "
-                              "for better performace if torch.version < 2.3.0.")
-            else:
-                # torch.optim.AdamW supports __fused_adamw when torch.version >= 2.3.0
-                from torch.optim import AdamW as CPUAdam
 
-            # cpu optimizer offload must config use_precision_aware_optimizer to True,
-            # we should reconfig use_precision_aware_optimizer to break the compatibility.
-            if not int(os.getenv("CPU_OPTIMIZER_PRECISION_AWARE_RECONFIG", 0)):
-                config.use_precision_aware_optimizer = False
+def _get_megatron_optimizer_based_on_param_groups(config, *args: Any, **kwargs: Any):
+    """Preserve 0.19 optimizer features while applying two MUSA CPU-offload guards."""
 
-            gpu_optimizer_cls = Adam if config.optimizer == 'adam' else SGD
-            cpu_optimizer_cls = CPUAdam if config.optimizer == 'adam' else CPUSGD
-            if config.use_torch_optimizer_for_cpu_offload:
-                gpu_optimizer_cls = cpu_optimizer_cls
-            if config.optimizer == 'adam':
-                gpu_optimizer_cls = Adam
-                cpu_optimizer_cls = CPUAdam
-                optimizer_defaults = dict(
-                    lr=config.lr,
-                    weight_decay=config.weight_decay,
-                    betas=(config.adam_beta1, config.adam_beta2),
-                    eps=config.adam_eps,
-                    bias_correction=True,
-                    fused=True,  # this flag is used to improve the performance of the cpu optimizer
-                )
-            else:
-                gpu_optimizer_cls = SGD
-                cpu_optimizer_cls = CPUSGD
-                optimizer_defaults = dict(
-                    lr=config.lr, weight_decay=config.weight_decay, momentum=config.sgd_momentum
-                )
+    if (
+        config.optimizer_cpu_offload
+        and os.environ.get("CPU_OPTIMIZER_PRECISION_AWARE_RECONFIG", "0") != "1"
+    ):
+        config.use_precision_aware_optimizer = False
 
-            optimizer = HybridDeviceOptimizer(
-                param_groups,
-                offload_fraction=config.optimizer_offload_fraction,
-                cpu_optimizer_cls=cpu_optimizer_cls,
-                gpu_optimizer_cls=gpu_optimizer_cls,
-                overlap_cpu_optimizer_d2h_h2d=config.overlap_cpu_optimizer_d2h_h2d,
-                pin_cpu_grads=config.pin_cpu_grads,
-                pin_cpu_params=config.pin_cpu_params,
-                param_update_in_fp32=True,
-                **optimizer_defaults,
+    original_cpu_adam = optimizer_module.CPUAdam
+    legacy_cpu_adam = None
+    if config.optimizer_cpu_offload and Version(
+        torch.__version__.split("+")[0]
+    ) < Version("2.3.0"):
+        legacy_cpu_adam = _legacy_deepspeed_cpu_adam()
+        if legacy_cpu_adam is not None:
+            optimizer_module.CPUAdam = legacy_cpu_adam
+            warnings.warn(
+                "Using DeepSpeedCPUAdam for MUSA CPU offload on PyTorch < 2.3.",
+                stacklevel=2,
             )
-            init_state_fn = None
-        elif config.optimizer == 'adam':
-            kwargs = {
-                "params": param_groups,
-                "lr": config.lr,
-                "weight_decay": config.weight_decay,
-                "betas": (config.adam_beta1, config.adam_beta2),
-                "eps": config.adam_eps,
-            }
 
-            if config.use_precision_aware_optimizer:
-                kwargs.update(
-                    {
-                        "master_weights": True,
-                        "use_decoupled_grad": True,
-                        "master_weight_dtype": config.main_params_dtype,
-                        "exp_avg_dtype": config.exp_avg_dtype,
-                        "exp_avg_sq_dtype": config.exp_avg_sq_dtype,
-                    }
-                )
+    try:
+        return _ORIGINAL_GET_OPTIMIZER(config, *args, **kwargs)
+    finally:
+        optimizer_module.CPUAdam = original_cpu_adam
 
-                if is_te_min_version("2.1.0.dev0"):
-                    kwargs.update({"store_param_remainders": True})
 
-            optimizer = Adam(**kwargs)
-
-            def init_state_fn(opt, config=None):
-                for group in opt.param_groups:
-                    for p in group['params']:
-                        if len(opt.state[p]) == 0:
-                            if config is None or not config.use_precision_aware_optimizer:
-                                opt.state[p]['exp_avg'] = torch.zeros_like(p.data)
-                                opt.state[p]['exp_avg_sq'] = torch.zeros_like(p.data)
-                            else:
-                                opt.initialize_state(p)
-
-        elif config.optimizer == 'sgd':
-            optimizer = SGD(
-                param_groups,
-                lr=config.lr,
-                weight_decay=config.weight_decay,
-                momentum=config.sgd_momentum,
-            )
-            init_state_fn = None
-        elif config.optimizer == 'muon':
-            # Ported from Megatron-LM v0.16 native _get_megatron_optimizer_based_on_param_groups.
-            qkv_split_shapes = None
-            for model_chunk in model_chunks:
-                num_attention_heads = model_chunk.config.num_attention_heads
-                num_query_groups = model_chunk.config.num_query_groups
-                kv_channels = model_chunk.config.kv_channels
-                if model_chunk.config.elementwise_attn_output_gate:
-                    qkv_split_shapes = [
-                        num_attention_heads // num_query_groups * kv_channels,
-                        num_attention_heads // num_query_groups * kv_channels,
-                        kv_channels,
-                        kv_channels,
-                    ]
-                else:
-                    qkv_split_shapes = [
-                        num_attention_heads // num_query_groups * kv_channels,
-                        kv_channels,
-                        kv_channels,
-                    ]
-                for name, param in model_chunk.named_parameters():
-                    if not param.requires_grad:
-                        continue
-                    if 'linear_qkv.weight' in name and len(param.shape) == 2:
-                        param.is_qkv = True
-
-            optimizer = Muon(param_groups,
-                             lr=config.lr, weight_decay=config.weight_decay,
-                             matched_adamw_rms=config.muon_matched_adamw_rms,
-                             momentum=config.muon_momentum,
-                             nesterov=config.muon_nesterov,
-                             ns_steps=config.muon_ns_steps,
-                             adamw_betas=(config.adam_beta1, config.adam_beta2),
-                             adamw_eps=config.adam_eps,
-                             qkv_split_shapes=qkv_split_shapes,
-                             muon_split_qkv=config.muon_split_qkv,
-                             muon_coefficient_type=config.muon_coefficient_type)
-
-            def init_state_fn(opt, config=None):
-                # not actually called when using distributed optimizer
-                for group in opt.param_groups:
-                    for p in group['params']:
-                        if len(opt.state[p]) == 0:
-                            if config is None or not config.use_precision_aware_optimizer:
-                                opt.state[p]['exp_avg'] = torch.zeros_like(p.data)
-                                opt.state[p]['exp_avg_sq'] = torch.zeros_like(p.data)
-                            else:
-                                opt.initialize_state(p)
-        else:
-            raise Exception('{} optimizer is not supported.'.format(config.optimizer))
-    else:
-        optimizer = None
-        init_state_fn = None
-
-    # Mixed precision optimizer.
-    # - Note: both the Float16Optimizer and the DistributedOptimizer inherit
-    #   from the MixedPrecisionOptimizer, which manages any optimizer where
-    #   the model params and main params are distinct.
-    if config.fp16 or config.bf16 or config.use_distributed_optimizer:
-
-        # Grad scaler:
-        #    if loss-scale is provided, instantiate the constant scaler.
-        #    if we are using fp16 and loss-scale is not present, use a
-        #       dynamic scaler.
-        #    otherwise we are running in bf16 with no loss-scale so
-        #       leave it as None.
-        grad_scaler = None
-
-        # Constant loss scale.
-        if config.loss_scale:
-            grad_scaler = ConstantGradScaler(config.loss_scale)
-
-        # Dynamic loss scale.
-        else:
-            if config.fp16:
-                grad_scaler = DynamicGradScaler(
-                    initial_scale=config.initial_loss_scale,
-                    min_scale=config.min_loss_scale,
-                    growth_factor=2.0,
-                    backoff_factor=0.5,
-                    growth_interval=config.loss_scale_window,
-                    hysteresis=config.hysteresis,
-                )
-
-        optimizer_args = [optimizer, config, grad_scaler, init_state_fn]
-        if config.use_distributed_optimizer:
-            optimizer = DistributedOptimizer(
-                *optimizer_args,
-                model_chunks=model_chunks,
-                per_model_buffers=per_model_buffers,
-                data_parallel_group=data_parallel_group,
-                data_parallel_group_gloo=data_parallel_group_gloo,
-                data_parallel_group_idx=data_parallel_group_idx,
-                distributed_optimizer_instance_id=distributed_optimizer_instance_id,
-            )
-            # v0.16: reduce grad stats inside each dist-opt instance when >1 instance.
-            setattr(optimizer, 'grad_stats_parallel_group', intra_dist_opt_group)
-        else:
-            optimizer = Float16OptimizerWithFloat16Params(*optimizer_args)
-            setattr(optimizer, 'grad_stats_parallel_group', model_parallel_group)
-    else:
-        # FP32 optimizer.
-        optimizer = FP32Optimizer(optimizer, config, init_state_fn)
-        setattr(optimizer, 'grad_stats_parallel_group', model_parallel_group)
-
-    return optimizer
-
-import sys
-for k in sys.modules:
-    if k.startswith('megatron'):
-        for target in ['_get_megatron_optimizer_based_on_param_groups']:
-            if getattr(sys.modules[k], target, None):
-                setattr(sys.modules[k], target, _get_megatron_optimizer_based_on_param_groups)
+optimizer_module._get_megatron_optimizer_based_on_param_groups = (
+    _get_megatron_optimizer_based_on_param_groups
+)
