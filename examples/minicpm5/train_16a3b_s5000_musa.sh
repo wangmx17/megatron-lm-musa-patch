@@ -254,7 +254,7 @@ MOE_ARGS=(
   --moe-router-pre-softmax
   --moe-router-topk-scaling-factor "${MOE_ROUTER_TOPK_SCALING_FACTOR}"
   --moe-router-dtype fp32
-  --moe-deepep-num-sms "${MOE_DEEPEP_NUM_SMS:-20}"
+  --moe-flex-dispatcher-num-sms "${MOE_FLEX_DISPATCHER_NUM_SMS:-20}"
 )
 # DISABLE_MOE_FUSIONS=1: drop permute-fusion + grouped-gemm (precision / fusion ablation).
 # DISABLE_PERMUTE_FUSION=1: drop ONLY permute-fusion, keep grouped-gemm (isolate fused permute kernel).
