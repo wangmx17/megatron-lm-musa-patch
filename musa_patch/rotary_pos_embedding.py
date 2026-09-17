@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from megatron.core.transformer.transformer_block import TransformerBlock
 
 import logging
+from .thd_metadata_cache import thd_seqlens_cpu
 
 import torch
 from torch import Tensor, nn
@@ -100,7 +101,7 @@ def apply_rotary_pos_emb_thd(
         # v0.16: shard per-sequence lengths by cp_size and pick this rank's freqs slice.
         cp_size = cp_group.size()
         cp_rank = cp_group.rank()
-        seqlens = ((cu_seqlens[1:] - cu_seqlens[:-1]) // cp_size).tolist()
+        seqlens = [length // cp_size for length in thd_seqlens_cpu(cu_seqlens)]
         return torch.cat(
             [
                 apply_rotary_pos_emb_bshd(
@@ -112,7 +113,7 @@ def apply_rotary_pos_emb_thd(
             ]
         ).squeeze(1)
 
-    seqlens = (cu_seqlens[1:] - cu_seqlens[:-1]).tolist()
+    seqlens = thd_seqlens_cpu(cu_seqlens)
     return torch.cat(
         [
             apply_rotary_pos_emb_bshd(x.unsqueeze(1), freqs[: x.size(0)])
@@ -139,7 +140,7 @@ def apply_rotary_pos_emb_thd_torch_rope(
     if cp_group is not None and cp_group.size() > 1:
         cp_size = cp_group.size()
         cp_rank = cp_group.rank()
-        seqlens = ((cu_seqlens[1:] - cu_seqlens[:-1]) // cp_size).tolist()
+        seqlens = [length // cp_size for length in thd_seqlens_cpu(cu_seqlens)]
         return torch.cat(
             [
                 _torch_rope_bshd(
@@ -150,7 +151,7 @@ def apply_rotary_pos_emb_thd_torch_rope(
                 for x in torch.split(t, seqlens)
             ]
         ).squeeze(1)
-    seqlens = (cu_seqlens[1:] - cu_seqlens[:-1]).tolist()
+    seqlens = thd_seqlens_cpu(cu_seqlens)
     return torch.cat(
         [
             _torch_rope_bshd(x.unsqueeze(1), freqs[: x.size(0)], rotary_interleaved=rotary_interleaved)
