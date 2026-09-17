@@ -7,6 +7,9 @@ import torch_musa
 from contextlib import nullcontext
 
 def patch_before_import_megatron():
+    # Patch flash-attn's _flash_attn_forward for MUSA CP/THD BEFORE transformer_engine
+    # imports it (TE binds `_flash_attn_forward as flash_attn_fwd` at import time).
+    from . import flash_attn_cp_compat
     # Import fused_layer_norm before transformer_engine
     from . import fused_layer_norm
 

@@ -22,10 +22,10 @@ import torch
 import torch.nn.functional as F
 
 from megatron.core.transformer.moe.moe_utils import (
-    ModelCommProcessGroups,
     topk_routing_with_score_function,
     compute_routing_scores_for_aux_loss,
 )
+from .v016_pg_compat import ModelCommProcessGroups
 
 from megatron.core.transformer.moe.router import TopKRouter
 from transformer_engine.musa.pytorch.utils import replace_attr, add_attr

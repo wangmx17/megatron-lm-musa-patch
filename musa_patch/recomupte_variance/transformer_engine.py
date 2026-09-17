@@ -15,7 +15,7 @@ from megatron.core.parallel_state import (
     get_hierarchical_context_parallel_groups,
     get_tensor_model_parallel_group,
 )
-from megatron.core.process_groups_config import ModelCommProcessGroups
+from ..v016_pg_compat import ModelCommProcessGroups
 from megatron.core.tensor_parallel import get_cuda_rng_tracker, get_expert_parallel_rng_tracker_name
 from megatron.core.transformer.enums import AttnMaskType
 from megatron.core.transformer.transformer_config import TransformerConfig

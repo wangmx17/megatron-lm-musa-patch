@@ -24,12 +24,12 @@ from megatron.core.pipeline_parallel.utils import (
 )
 
 from megatron.core.transformer.moe.moe_utils import (
-    ModelCommProcessGroups,
     get_capacity,
     maybe_move_tensor_to_cpu,
     pad_routing_map,
-    
+
 )
+from ..v016_pg_compat import ModelCommProcessGroups
 from megatron.core.transformer.transformer_config import TransformerConfig
 
 from megatron.core.transformer.moe.fused_a2a import (

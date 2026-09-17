@@ -14,7 +14,6 @@ from megatron.core.tensor_parallel import (
     reduce_scatter_to_sequence_parallel_region,
 )
 from megatron.core.transformer.moe.moe_utils import (
-    ModelCommProcessGroups,
     get_capacity,
     pad_routing_map,
     permute,
@@ -22,6 +21,7 @@ from megatron.core.transformer.moe.moe_utils import (
     unpermute,
     maybe_move_tensor_to_cpu,
 )
+from .v016_pg_compat import ModelCommProcessGroups
 from megatron.core.transformer.transformer_config import TransformerConfig
 
 
