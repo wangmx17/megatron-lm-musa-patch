@@ -7,6 +7,12 @@ import torch_musa
 from contextlib import nullcontext
 
 def patch_before_import_megatron():
+    enable_ace_wgrad = os.getenv("ENABLE_ACE_WGRAD_OVERLAP", "0")
+    if enable_ace_wgrad not in ("0", "1"):
+        raise ValueError("ENABLE_ACE_WGRAD_OVERLAP must be 0 or 1")
+    if enable_ace_wgrad == "1" and os.getenv("USE_DEEPEP_ACE", "0") != "1":
+        raise RuntimeError("ENABLE_ACE_WGRAD_OVERLAP=1 requires USE_DEEPEP_ACE=1")
+
     # Patch flash-attn's _flash_attn_forward for MUSA CP/THD BEFORE transformer_engine
     # imports it (TE binds `_flash_attn_forward as flash_attn_fwd` at import time).
     from . import flash_attn_cp_compat
