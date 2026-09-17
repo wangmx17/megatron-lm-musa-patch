@@ -28,6 +28,8 @@ def patch_before_import_megatron():
     _te_attn_lse._flash_attn_2_6_0_plus = False
     _te_attn_lse._flash_attn_2_7_0_plus = False
     _flash_attn_version = _te_attn_lse._flash_attn_version
+    from .cp_backward_batch_overlap import install as _install_cp_backward_overlap
+    _install_cp_backward_overlap()
     from .cp_forward_batch_overlap import install as _install_cp_forward_overlap
     _install_cp_forward_overlap()
     _orig_thd_lse = getattr(getattr(_te_attn_lse, "tex", None), "thd_second_half_lse_correction", None)
