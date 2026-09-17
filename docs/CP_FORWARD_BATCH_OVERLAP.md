@@ -76,16 +76,6 @@ worker31012 / megatron_test，单机8卡S5000；TP2/PP1/CP4/EP8/DP1，seq65536�
 
 前向FA累计时间从5.227343s增加到5.518163s，说明通信重叠并不保证FA自己变快；可能存在资源竞争，但本次没有独立证明其原因。
 
-截图只包含明确筛选的CP/FA窗口，保留原始kernel时间戳、时长、名称及correlation。全步数字来自完整trace，不从截图窗口外推。PR只附截图，不上传全量trace。
-
-### A 基线窗口
-
-![A baseline](images/cp_forward_A.jpg)
-
-### B 独立候选窗口
-
-![B candidate](images/cp_forward_B.jpg)
-
 ## 失败路径也必须保留
 
 `NVTE_BATCH_MHA_P2P_COMM=0`的普通异步版本不予推荐：前向未完成首步，出现DeepEP recv timeout；反向8/10后出现segfault/MUSA错误。不能用其部分step计算收益。错误发生位置不等价于已经证明底层根因。
