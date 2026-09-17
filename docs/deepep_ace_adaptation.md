@@ -12,6 +12,7 @@
 musa_patch/deepep_ace/__init__.py
 musa_patch/deepep_ace/fused_a2a_ace.py
 musa_patch/deepep_ace/token_dispatcher.py
+musa_patch/deepep_ace/ace_wgrad.py
 ```
 
 ## 2. 为什么需要修改
@@ -126,3 +127,47 @@ export DEEPEP_ACE_DYNAMIC_TOKEN_NUM=1
 - MUSA patch 在 Megatron 创建和使用 DeepEP manager 前完成加载。
 
 已验证配置使用一个 ACE buffer 和 buffer index 0。增加 buffer 数量或切换 buffer index 需要单独验证，不能直接沿用当前结论。
+
+## 5. Routed dW 与 backward ACE combine 重叠
+
+设置以下变量可以启用默认关闭的 routed-expert weight-gradient 调度：
+
+```bash
+export ENABLE_DEEPEP=1
+export ENABLE_ACE_WGRAD_OVERLAP=1
+```
+
+`ENABLE_DEEPEP` 选择 Flex+DeepEP dispatcher；`USE_DEEPEP_ACE` 单独选择
+DeepEP 的 ACE 路径，并在未显式设置时继承 `ENABLE_DEEPEP`。因此普通 DeepEP
+基线应显式使用：
+
+```bash
+export ENABLE_DEEPEP=1
+export USE_DEEPEP_ACE=0
+export ENABLE_ACE_WGRAD_OVERLAP=0
+```
+
+ACE+dW 候选使用 `1/1/1`。launcher 会拒绝 ACE 未开启却请求 dW overlap 的
+组合，避免日志显示候选已启用而实际静默运行普通 DeepEP。
+
+专家反向先完成生成输入梯度所需的 FC2/FC1 计算，并提交 DeepEP ACE
+combine。FC2 和 FC1 的参数梯度只依赖各自前向输入和反向输出梯度，此时已经
+具备计算条件。适配层因此使用 MUSA Transformer Engine 的原生 delayed-wgrad
+store 暂存这两个任务，并把执行顺序改为：
+
+```text
+submit backward ACE combine
+  -> routed FC2 dW
+  -> routed FC1 dW
+  -> wait for ACE combine
+```
+
+ACE 完成等待仍然保留，模型可见的数据依赖没有删除。Megatron 的全局
+`delay_wgrad_compute` 保持关闭，只有 routed experts 的两项 dW 被延后到上述
+窗口。每个 MoE 层只允许一代 forward/backward 在途，返回 backward 前必须
+排空两个 TE store。
+
+该路径只接受已验证的 PP1、BF16、无重计算/CPU offload/bias、无异步梯度归约、
+expert TP/DP 皆为 1、fused main-grad accumulation 配置，并拒绝冻结 routed
+expert 权重。当前结论不能外推到 pipeline scheduling、recompute、offload、
+shared expert overlap 或其他并发 backward 方案。
