@@ -56,6 +56,9 @@ def patch_before_import_megatron():
     if int(os.getenv("USE_RECOMPUTE_VARIANCE", 0)):
         from . import recomupte_variance
     from . import optimizer
+    if os.getenv("MUON_TE_EXPERT_BATCH_NS", "0") == "1":
+        from .muon_expert_batch_v019 import install as install_muon_expert_batch
+        install_muon_expert_batch()
     # Register optional Triton pointwise kernels after optimizer imports Muon.
     # Keep the import lazy so the default-off experiment cannot affect startup.
     if os.getenv("MUON_FUSED_POINTWISE", "0").strip().lower() in {
