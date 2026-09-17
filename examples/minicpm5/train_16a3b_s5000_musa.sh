@@ -123,6 +123,36 @@ except Exception as exc:
     sys.exit(9)
 MUSACHECK
 
+python3 - <<'TECHECK'
+import os
+import sys
+
+import transformer_engine
+import transformer_engine_torch as tex
+
+mode = os.getenv("MUSA_TE_THD_LSE_FP32", "auto").strip().lower()
+if mode not in ("auto", "require", "disable"):
+    print(
+        "Error: MUSA_TE_THD_LSE_FP32 must be auto, require, or disable; "
+        f"got {mode!r}",
+        file=sys.stderr,
+    )
+    sys.exit(10)
+has_native = bool(getattr(tex, "NVTE_MUSA_THD_LSE_FP32", False))
+if mode == "require" and not has_native:
+    print(
+        "Error: native TE THD LSE fp32 was required but is unavailable",
+        file=sys.stderr,
+    )
+    sys.exit(10)
+selected = "native_fp32" if has_native and mode != "disable" else "fp64_compat"
+print(
+    "TE THD LSE: "
+    f"mode={mode} native_capability={has_native} selected_backend={selected}",
+    flush=True,
+)
+TECHECK
+
 python3 - "${MODEL_PATH}/config.json" <<'PY'
 import json
 import sys
