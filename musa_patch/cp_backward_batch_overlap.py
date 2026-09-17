@@ -63,8 +63,6 @@ def install():
     """Enable only when MUSA_CP_BACKWARD_BATCH_OVERLAP=1 (default off)."""
     if os.environ.get('MUSA_CP_BACKWARD_BATCH_OVERLAP', '0') != '1':
         return
-    if os.environ.get('MUSA_CP_FORWARD_BATCH_OVERLAP', '0') == '1':
-        raise RuntimeError('simultaneous CP forward/backward overlap is not validated')
     direction = 'backward'
     import torch
     import transformer_engine.pytorch.attention as te

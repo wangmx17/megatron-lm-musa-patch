@@ -38,14 +38,13 @@ class InstallerSafety(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "requires NVTE_BATCH"):
                 adapter.install()
 
-    def test_simultaneous_forward_backward_rejected_before_import(self):
+    def test_simultaneous_forward_backward_reaches_standard_checks(self):
         with patch.dict(os.environ, {
                 FLAG: "1",
                 "MUSA_CP_FORWARD_BATCH_OVERLAP": "1",
-                "NVTE_BATCH_MHA_P2P_COMM": "1",
-        }, clear=True), patch.dict(
-                sys.modules, {"torch": None, "transformer_engine": None}):
-            with self.assertRaisesRegex(RuntimeError, "simultaneous CP forward/backward"):
+                "NVTE_BATCH_MHA_P2P_COMM": "0",
+        }, clear=True), patch.dict(sys.modules, self.fake_modules()):
+            with self.assertRaisesRegex(RuntimeError, "requires NVTE_BATCH"):
                 adapter.install()
 
     def test_unknown_te_source_rejected(self):
