@@ -1,4 +1,4 @@
-"""Opt-in CP backward batched P2P with device-side consumer waits.
+"""Opt-in CP forward batched P2P with device-side consumer waits.
 
 Limited to the validated MUSA TE source and BF16 THD CP4 configuration.
 Installation changes only this process, never the installed TE source files.
@@ -21,16 +21,12 @@ def replace_once(source, before, after):
 
 def build_source(source, direction):
     source = textwrap.dedent(source)
-    # All previous requests finish at the bottom of the prior ring iteration.
-    # Current communication reads the previous dKV and writes the other buffer;
-    # current FA reads current KV and writes separate dk_/dv_. Wait before dKV accumulation.
-    if source.count('flash_attn_p2p_communicate_sync(') != 2:
-        raise RuntimeError('unexpected backward P2P layout')
-    source = source.replace('flash_attn_p2p_communicate_sync(', 'flash_attn_p2p_communicate(')
-    source = replace_once(source, '# async_op=True,', 'async_op=True,')
     source = replace_once(source,
-        '        # wait until dKV is received\n        # for req in send_recv_reqs:\n        #     req.wait()',
-        '        # Wait only after current FA and dq work has been submitted.\n        for req in send_recv_reqs:\n            req.wait()')
+        '                # for req in send_recv_reqs[(i + 1) % 2]:\n                #     req.wait()',
+        '                for req in send_recv_reqs[(i + 1) % 2]:\n                    req.wait()')
+    source = replace_once(source,
+        'send_recv_reqs[i % 2] = flash_attn_p2p_communicate_sync(',
+        'send_recv_reqs[i % 2] = flash_attn_p2p_communicate(')
     tree = ast.parse(source)
     assert len(tree.body) == 1 and isinstance(tree.body[0], ast.FunctionDef)
     assert all(isinstance(d, ast.Name) and d.id == 'staticmethod' for d in tree.body[0].decorator_list)
@@ -40,12 +36,12 @@ def build_source(source, direction):
 
 def _install_experiment():
     import transformer_engine.pytorch.attention as attention
-    direction = 'backward'
+    direction = 'forward'
     cls = attention.AttnFuncWithCPAndKVP2P
     original = getattr(cls, direction)
     assert not original.__closure__, 'unexpected closure'
     source = build_source(inspect.getsource(original), direction)
-    expected = 'bda4e1789e35847df45ba08decc3e626dddbe25acdace40949c3b452b6f9beaa'
+    expected = '2a82ad437680ebed2adfe86cfbb60b7a0a59c83c83d6edbcbb2fa6d0eaa2ead8'
     if hashlib.sha256(source.encode()).hexdigest() != expected:
         raise RuntimeError('Unexpected live TE function; refusing to compose unvalidated patches')
     filename = '<overlap0916_cp_' + direction + '>'
@@ -60,12 +56,10 @@ TE_SHA256 = '510afa9a3da138697c8c16538efabcb22b8ec5dacaadd6aef5bdd02ff9b510c1'
 
 
 def install():
-    """Enable only when MUSA_CP_BACKWARD_BATCH_OVERLAP=1 (default off)."""
-    if os.environ.get('MUSA_CP_BACKWARD_BATCH_OVERLAP', '0') != '1':
+    """Enable only when MUSA_CP_FORWARD_BATCH_OVERLAP=1 (default off)."""
+    if os.environ.get('MUSA_CP_FORWARD_BATCH_OVERLAP', '0') != '1':
         return
-    if os.environ.get('MUSA_CP_FORWARD_BATCH_OVERLAP', '0') == '1':
-        raise RuntimeError('simultaneous CP forward/backward overlap is not validated')
-    direction = 'backward'
+    direction = 'forward'
     import torch
     import transformer_engine.pytorch.attention as te
 
@@ -84,14 +78,18 @@ def install():
     @functools.wraps(original)
     def guarded(*args, **kwargs):
         bound = signature.bind(*args, **kwargs).arguments
-        ctx, dout = bound['ctx'], bound['dout']
-        supported = (dout.dtype == torch.bfloat16 and dout.device.type == 'musa'
-            and tuple(dout.shape) == (16384, 16, 128)
-            and ctx.qkv_format == 'thd' and ctx.attn_mask_type == 'padding_causal'
-            and ctx.attn_bias_type == 'no_bias' and ctx.dropout_p == 0
-            and not ctx.fp8 and not ctx.use_fused_attention
-            and ctx.cp_size_a2a == 1
-            and te.get_distributed_world_size(ctx.cp_group) == 4)
+        q, k, v = (bound[n] for n in ('q', 'k', 'v'))
+        supported = (q.dtype == k.dtype == v.dtype == torch.bfloat16
+            and q.device.type == k.device.type == v.device.type == 'musa'
+            and tuple(q.shape) == (16384, 16, 128)
+            and tuple(k.shape) == tuple(v.shape) == (16384, 1, 128)
+            and bound['qkv_format'] == 'thd'
+            and bound['attn_mask_type'] == 'padding_causal'
+            and bound['attn_bias_type'] == 'no_bias'
+            and bound['dropout_p'] == 0 and not bound['fp8']
+            and not bound['use_fused_attention']
+            and not isinstance(bound['cp_group'], list)
+            and te.get_distributed_world_size(bound['cp_group']) == 4)
         if not supported:
             raise RuntimeError('CP overlap is limited to the validated BF16 THD CP4 MiniCPM5 shape')
         return candidate(*args, **kwargs)

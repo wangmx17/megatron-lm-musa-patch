@@ -7,11 +7,11 @@ import types
 import unittest
 from unittest.mock import patch
 
-MODULE_PATH = Path(__file__).parents[1] / "musa_patch/cp_backward_batch_overlap.py"
+MODULE_PATH = Path(__file__).parents[1] / "musa_patch/cp_forward_batch_overlap.py"
 spec = importlib.util.spec_from_file_location("cp_overlap_under_test", MODULE_PATH)
 adapter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(adapter)
-FLAG = "MUSA_CP_BACKWARD_BATCH_OVERLAP"
+FLAG = "MUSA_CP_FORWARD_BATCH_OVERLAP"
 
 
 class InstallerSafety(unittest.TestCase):
@@ -38,16 +38,6 @@ class InstallerSafety(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "requires NVTE_BATCH"):
                 adapter.install()
 
-    def test_simultaneous_forward_backward_rejected_before_import(self):
-        with patch.dict(os.environ, {
-                FLAG: "1",
-                "MUSA_CP_FORWARD_BATCH_OVERLAP": "1",
-                "NVTE_BATCH_MHA_P2P_COMM": "1",
-        }, clear=True), patch.dict(
-                sys.modules, {"torch": None, "transformer_engine": None}):
-            with self.assertRaisesRegex(RuntimeError, "simultaneous CP forward/backward"):
-                adapter.install()
-
     def test_unknown_te_source_rejected(self):
         with patch.dict(os.environ, {FLAG: "1", "NVTE_BATCH_MHA_P2P_COMM": "1"}), \
                 patch.dict(sys.modules, self.fake_modules()):
@@ -56,20 +46,20 @@ class InstallerSafety(unittest.TestCase):
 
     def test_unrecognized_function_layout_rejected(self):
         with self.assertRaises(RuntimeError):
-            adapter.build_source("def backward(ctx):\n    pass\n", "backward")
+            adapter.build_source("def forward(ctx):\n    pass\n", "forward")
 
     def test_live_function_change_rejected_before_install(self):
         def original(ctx):
             return None
         modules = self.fake_modules()
         attention = modules["transformer_engine.pytorch.attention"]
-        attention.AttnFuncWithCPAndKVP2P = types.SimpleNamespace(backward=original)
+        attention.AttnFuncWithCPAndKVP2P = types.SimpleNamespace(forward=original)
         with patch.dict(sys.modules, modules), \
                 patch.object(adapter.inspect, "getsource", return_value="unused"), \
-                patch.object(adapter, "build_source", return_value="def backward(ctx):\n    return None\n"):
+                patch.object(adapter, "build_source", return_value="def forward(ctx):\n    return None\n"):
             with self.assertRaisesRegex(RuntimeError, "Unexpected live TE"):
                 adapter._install_experiment()
-        self.assertIs(attention.AttnFuncWithCPAndKVP2P.backward, original)
+        self.assertIs(attention.AttnFuncWithCPAndKVP2P.forward, original)
 
 
 if __name__ == "__main__":

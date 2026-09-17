@@ -30,6 +30,8 @@ def patch_before_import_megatron():
     _flash_attn_version = _te_attn_lse._flash_attn_version
     from .cp_backward_batch_overlap import install as _install_cp_backward_overlap
     _install_cp_backward_overlap()
+    from .cp_forward_batch_overlap import install as _install_cp_forward_overlap
+    _install_cp_forward_overlap()
     _orig_thd_lse = getattr(getattr(_te_attn_lse, "tex", None), "thd_second_half_lse_correction", None)
     _te_has_native_thd_lse_fp32 = bool(
         getattr(getattr(_te_attn_lse, "tex", None), "NVTE_MUSA_THD_LSE_FP32", False)
@@ -82,6 +84,9 @@ def patch_before_import_megatron():
         from . import deepep_ace
     from . import ce_te_stride
     from . import moe_router_fusion
+    if os.getenv("MUSA_FUSED_ROUTE_CONVERSION", "0") == "1":
+        from .moe_route_conversion import install as install_route_conversion
+        install_route_conversion()
 
     from . import core_pipeline_parallel_schedules
     from . import yarn_rotary_pos_embedding
