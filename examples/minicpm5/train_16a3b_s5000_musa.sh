@@ -457,7 +457,10 @@ if [[ "${ENABLE_DEEPEP:-0}" -eq 1 ]]; then
   export NVSHMEM_IB_TRAFFIC_CLASS="${NVSHMEM_IB_TRAFFIC_CLASS:-163}"
   MOE_ARGS+=(--moe-token-dispatcher-type flex --moe-enable-deepep --moe-token-drop-policy probs)
   TRAINING_ARGS+=(--enable-experimental)
-  OPT_ARGS+=("deepep_ace")
+  OPT_ARGS+=("deepep")
+  if [[ "${USE_DEEPEP_ACE}" -eq 1 ]]; then
+    OPT_ARGS+=("ace")
+  fi
 fi
 # 2. CrossEntropy TE fusion.
 if [[ "${ENABLE_CE_TE:-0}" -eq 1 ]]; then

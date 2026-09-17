@@ -137,6 +137,19 @@ export ENABLE_DEEPEP=1
 export ENABLE_ACE_WGRAD_OVERLAP=1
 ```
 
+`ENABLE_DEEPEP` 选择 Flex+DeepEP dispatcher；`USE_DEEPEP_ACE` 单独选择
+DeepEP 的 ACE 路径，并在未显式设置时继承 `ENABLE_DEEPEP`。因此普通 DeepEP
+基线应显式使用：
+
+```bash
+export ENABLE_DEEPEP=1
+export USE_DEEPEP_ACE=0
+export ENABLE_ACE_WGRAD_OVERLAP=0
+```
+
+ACE+dW 候选使用 `1/1/1`。launcher 会拒绝 ACE 未开启却请求 dW overlap 的
+组合，避免日志显示候选已启用而实际静默运行普通 DeepEP。
+
 专家反向先完成生成输入梯度所需的 FC2/FC1 计算，并提交 DeepEP ACE
 combine。FC2 和 FC1 的参数梯度只依赖各自前向输入和反向输出梯度，此时已经
 具备计算条件。适配层因此使用 MUSA Transformer Engine 的原生 delayed-wgrad
