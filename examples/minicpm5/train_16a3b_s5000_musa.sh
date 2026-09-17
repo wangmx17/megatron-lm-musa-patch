@@ -297,6 +297,16 @@ if [[ "${USE_GROUPED_GEMM:-1}" -eq 1 && "${DISABLE_MOE_FUSIONS:-0}" -ne 1 ]]; th
   MOE_ARGS+=(--moe-grouped-gemm)
 fi
 
+# Capacity / drop: cap tokens per expert. Empty = dropless. Do not pad to capacity
+# when measuring peak memory, or every expert is forced to the cap.
+if [[ -n "${MOE_EXPERT_CAPACITY_FACTOR:-}" ]]; then
+  MOE_ARGS+=(
+    --moe-expert-capacity-factor "${MOE_EXPERT_CAPACITY_FACTOR}"
+    --moe-token-drop-policy "${MOE_TOKEN_DROP_POLICY:-probs}"
+  )
+  echo "MoE capacity/drop: factor=${MOE_EXPERT_CAPACITY_FACTOR} policy=${MOE_TOKEN_DROP_POLICY:-probs} pad=off"
+fi
+
 TRAINING_ARGS=(
   --seed "${SEED:-42}"
   --micro-batch-size "${MICRO_BATCH_SIZE}"
