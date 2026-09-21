@@ -127,6 +127,8 @@ python3 - <<'TECHECK'
 import os
 import sys
 
+# musa_patch installs the MUSA/flash-attn shims transformer_engine needs at import.
+import musa_patch
 import transformer_engine
 import transformer_engine_torch as tex
 
@@ -279,7 +281,7 @@ MOE_ARGS=(
   --moe-layer-freq "${MOE_LAYER_FREQ}"
   --moe-router-load-balancing-type seq_aux_loss
   --moe-aux-loss-coeff "${MOE_AUX_LOSS_COEFF:-0}"
-  --moe-token-dispatcher-type flex
+  --moe-token-dispatcher-type "${MOE_TOKEN_DISPATCHER_TYPE:-flex}"
   --moe-router-score-function sigmoid
   --moe-router-enable-expert-bias
   --moe-router-bias-update-rate "${MOE_ROUTER_BIAS_UPDATE_RATE:-0}"

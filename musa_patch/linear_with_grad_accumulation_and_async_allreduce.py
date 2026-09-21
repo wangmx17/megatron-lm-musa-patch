@@ -22,7 +22,13 @@ from megatron.core.parallel_state import (
 )
 
 from megatron.core.utils import prepare_input_tensors_for_wgrad_compute
-import fused_weight_gradient_mlp_cuda
+
+# Provided by the MUSA apex build; absent from images that ship MATE only.
+# Kept optional so training without --gradient-accumulation-fusion still imports.
+try:
+    import fused_weight_gradient_mlp_cuda
+except ImportError:
+    fused_weight_gradient_mlp_cuda = None
 
 class LinearWithGradAccumulationAndAsyncCommunication(torch.autograd.Function):
     """See linear_with_grad_accumulation_and_async_allreduce"""
@@ -144,6 +150,11 @@ class LinearWithGradAccumulationAndAsyncCommunication(torch.autograd.Function):
 
         if ctx.gradient_accumulation_fusion:
             if wgrad_compute:
+                if fused_weight_gradient_mlp_cuda is None:
+                    raise RuntimeError(
+                        "gradient accumulation fusion requires fused_weight_gradient_mlp_cuda "
+                        "(MUSA apex); run with --no-gradient-accumulation-fusion instead"
+                    )
                 if weight.main_grad.dtype == torch.float32:
                     fused_weight_gradient_mlp_cuda.wgrad_gemm_accum_fp32(
                         total_input, grad_output, weight.main_grad
