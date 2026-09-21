@@ -7,6 +7,10 @@ import torch_musa
 from contextlib import nullcontext
 
 def patch_before_import_megatron():
+    # Images without a MUSA flash-attn 2 build expose MATE FA3 instead; map it onto
+    # the FA2 API before anything reads flash_attn or transformer_engine.
+    from . import mate_fa3_compat
+    mate_fa3_compat.install()
     # Patch flash-attn's _flash_attn_forward for MUSA CP/THD BEFORE transformer_engine
     # imports it (TE binds `_flash_attn_forward as flash_attn_fwd` at import time).
     from . import flash_attn_cp_compat
@@ -148,6 +152,11 @@ def patch_after_import_torch():
     torch.cuda._lazy_call = torch.musa.core._lazy_init._lazy_call
     torch.cuda._lazy_init = torch.musa.core._lazy_init._lazy_init
 
+    # Libraries reading the raw stream handle (TileLang's cython backend) take the
+    # CUDA branch because torch.cuda.is_available now reports MUSA.
+    if not hasattr(torch._C, "_cuda_getCurrentRawStream"):
+        torch._C._cuda_getCurrentRawStream = torch_musa._MUSAC._musa_getCurrentRawStream
+
     # 2.Patch for torch args related to cuda/musa
     def hook_cuda_device(device):
         if isinstance(device, str) and device.startswith("cuda"):
@@ -260,7 +269,10 @@ def patch_after_import_torch():
 
     def get_device_capability_musa():
         # TODO(@ai-dist-infra): check device capability for MUSA backend
-        if torch.version.__version__ > "2.5.0":
+        # Callers (TE, Megatron) compare against tuples, so never return a list:
+        # a string compare here read torch "2.11.0.post2" as older than "2.5.0".
+        from packaging.version import Version as PkgVersion
+        if PkgVersion(torch.version.__version__.split("+")[0]) > PkgVersion("2.5.0"):
             return (8, 3)
         return [8, 3]
     torch.cuda.get_device_capability = get_device_capability_musa
