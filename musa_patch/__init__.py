@@ -7,6 +7,11 @@ import torch_musa
 from contextlib import nullcontext
 
 def patch_before_import_megatron():
+    # MATE must register its MUSA/DLPack side before Transformer Engine imports
+    # TVM-FFI bindings. This branch intentionally uses the MATE path by default.
+    from .mate_grouped_gemm import load_mate_gemm
+    load_mate_gemm()
+
     # Patch flash-attn's _flash_attn_forward for MUSA CP/THD BEFORE transformer_engine
     # imports it (TE binds `_flash_attn_forward as flash_attn_fwd` at import time).
     from . import flash_attn_cp_compat
@@ -65,6 +70,8 @@ def patch_before_import_megatron():
     from . import p2p_communication
     from . import fused_bias_swiglu
     from . import utils
+    from .mate_grouped_gemm import install_mate_grouped_gemm
+    install_mate_grouped_gemm()
     if int(os.getenv("USE_MUSA_MOE", 0)):
         from . import moe_utils
     from . import router
