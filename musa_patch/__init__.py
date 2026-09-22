@@ -7,6 +7,11 @@ import torch_musa
 from contextlib import nullcontext
 
 def patch_before_import_megatron():
+    # PR25: MATE must register its MUSA/DLPack side before Transformer Engine
+    # imports TVM-FFI bindings.
+    from .mate_grouped_gemm import load_mate_gemm
+    load_mate_gemm()
+
     # Patch flash-attn's _flash_attn_forward for MUSA CP/THD BEFORE transformer_engine
     # imports it (TE binds `_flash_attn_forward as flash_attn_fwd` at import time).
     from . import flash_attn_cp_compat
@@ -45,6 +50,8 @@ def patch_before_import_megatron():
     from . import profiling_annotation
     from . import training
     from . import linear_with_grad_accumulation_and_async_allreduce
+    from .mate_grouped_gemm import install_mate_grouped_gemm
+    install_mate_grouped_gemm()
     from . import rotary_pos_embedding
     from . import p2p_communication
     from . import fused_bias_swiglu
@@ -78,6 +85,9 @@ def patch_before_import_megatron():
     from . import ce_te_stride
     from . import v019_ce_compat
     from . import moe_router_fusion
+    if os.getenv("MUSA_FUSED_ROUTE_CONVERSION", "0") == "1":
+        from .moe_route_conversion import install as install_route_conversion
+        install_route_conversion()
 
     from . import core_pipeline_parallel_schedules
     from . import yarn_rotary_pos_embedding
