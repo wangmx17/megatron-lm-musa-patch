@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 import torch
 
@@ -64,6 +66,67 @@ class MateGroupedGemmHelperTests(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "complete contiguous parameter run"):
             MODULE._reorder_marked_param_groups([expert], [0])
+
+    def test_dynamic_contract_rejects_split_type_before_using_it(self):
+        module = type(
+            "Module",
+            (),
+            {
+                "fp8": False,
+                "fp8_calibration": False,
+                "use_bias": False,
+                "return_bias": False,
+                "gemm_bias_unfused_add": False,
+                "fuse_wgrad_accumulation": True,
+                "num_gemms": 2,
+            },
+        )()
+        inp = SimpleNamespace(
+            device=SimpleNamespace(type="musa"),
+            dtype=torch.bfloat16,
+            is_contiguous=lambda: True,
+        )
+
+        reason = MODULE._dynamic_unsupported_reason(module, inp, None, False)
+
+        self.assertEqual(reason, "split_type")
+
+    def test_weight_contract_cache_is_invalidated_before_repacking(self):
+        packed = torch.empty((2, 4, 8), dtype=torch.bfloat16)
+        module = type("Module", (), {"num_gemms": 2})()
+        module.weight0 = torch.nn.Parameter(packed[0])
+        module.weight1 = torch.nn.Parameter(packed[1])
+        module._mate_weight_contract_validated = True
+
+        MODULE._pack_weights_before_ddp(module)
+
+        self.assertFalse(module._mate_weight_contract_validated)
+
+    def test_weight_contract_accepts_packed_bf16_fp32_main_grads(self):
+        packed = torch.empty((2, 4, 8), dtype=torch.bfloat16)
+        weights = [torch.nn.Parameter(weight) for weight in packed.unbind(0)]
+        for weight in weights:
+            weight.main_grad = torch.empty_like(weight, dtype=torch.float32)
+
+        self.assertIsNone(MODULE._weight_contract_unsupported_reason(weights))
+
+    def test_weight_contract_is_checked_once_and_rechecked_after_repack(self):
+        packed = torch.empty((2, 4, 8), dtype=torch.bfloat16)
+        module = type("Module", (), {"num_gemms": 2})()
+        module.weight0 = torch.nn.Parameter(packed[0])
+        module.weight1 = torch.nn.Parameter(packed[1])
+        weights = [module.weight0, module.weight1]
+
+        with mock.patch.object(
+            MODULE, "_weight_contract_unsupported_reason", return_value=None
+        ) as validate:
+            MODULE._ensure_weight_contract(module, weights)
+            MODULE._ensure_weight_contract(module, weights)
+            self.assertEqual(validate.call_count, 1)
+
+            MODULE._pack_weights_before_ddp(module)
+            MODULE._ensure_weight_contract(module, weights)
+            self.assertEqual(validate.call_count, 2)
 
 
 if __name__ == "__main__":

@@ -70,6 +70,9 @@ def _weights(module):
 
 
 def _pack_weights_before_ddp(module) -> None:
+    # Device/dtype conversion through ``_apply`` can replace every parameter
+    # storage, so a previously validated weight contract is no longer valid.
+    module._mate_weight_contract_validated = False
     weights = _weights(module)
     for index, weight in enumerate(weights):
         weight._mate_grouped_gemm_group = id(module)
@@ -194,29 +197,58 @@ def _main_grads_ready(weights: Sequence[torch.Tensor]) -> bool:
     )
 
 
-def _unsupported_reason(module, inp, m_splits, fine_grained_offload) -> str | None:
-    weights = _weights(module)
-    checks = (
-        (not module.fp8 and not module.fp8_calibration, "fp8"),
-        (not module.use_bias and not module.return_bias, "bias"),
-        (not module.gemm_bias_unfused_add, "unfused_bias"),
-        (not fine_grained_offload, "offload"),
-        (module.fuse_wgrad_accumulation, "fused_wgrad"),
-        (inp.device.type == "musa", "device"),
-        (inp.dtype == torch.bfloat16, "dtype"),
-        (inp.is_contiguous(), "input_layout"),
-        (isinstance(m_splits, (list, tuple)), "split_type"),
-        (len(m_splits) == module.num_gemms, "split_count"),
-        (all(type(value) is int and value >= 0 for value in m_splits), "split_values"),
-        (sum(m_splits) == inp.reshape(-1, inp.shape[-1]).shape[0], "split_sum"),
-        (_is_packed(weights), "packed_weights"),
-        (all(weight.dtype == torch.bfloat16 for weight in weights), "weight_dtype"),
-        (_main_grads_ready(weights), "main_grad"),
-    )
-    for passed, reason in checks:
-        if not passed:
-            return reason
+def _weight_contract_unsupported_reason(
+    weights: Sequence[torch.Tensor],
+) -> str | None:
+    """Validate the invariant weight storage and gradient-buffer contract."""
+    if not _is_packed(weights):
+        return "packed_weights"
+    if not all(weight.dtype == torch.bfloat16 for weight in weights):
+        return "weight_dtype"
+    if not _main_grads_ready(weights):
+        return "main_grad"
     return None
+
+
+def _dynamic_unsupported_reason(
+    module, inp, m_splits, fine_grained_offload
+) -> str | None:
+    """Validate properties that may differ between forward calls."""
+    if module.fp8 or module.fp8_calibration:
+        return "fp8"
+    if module.use_bias or module.return_bias:
+        return "bias"
+    if module.gemm_bias_unfused_add:
+        return "unfused_bias"
+    if fine_grained_offload:
+        return "offload"
+    if not module.fuse_wgrad_accumulation:
+        return "fused_wgrad"
+    if inp.device.type != "musa":
+        return "device"
+    if inp.dtype != torch.bfloat16:
+        return "dtype"
+    if not inp.is_contiguous():
+        return "input_layout"
+    if not isinstance(m_splits, (list, tuple)):
+        return "split_type"
+    if len(m_splits) != module.num_gemms:
+        return "split_count"
+    if not all(type(value) is int and value >= 0 for value in m_splits):
+        return "split_values"
+    if sum(m_splits) != inp.reshape(-1, inp.shape[-1]).shape[0]:
+        return "split_sum"
+    return None
+
+
+def _ensure_weight_contract(module, weights: Sequence[torch.Tensor]) -> None:
+    """Validate invariant weight state once per packing/device lifecycle."""
+    if getattr(module, "_mate_weight_contract_validated", False):
+        return
+    unsupported_reason = _weight_contract_unsupported_reason(weights)
+    if unsupported_reason is not None:
+        raise RuntimeError(f"MATE GroupedLinear unsupported: {unsupported_reason}")
+    module._mate_weight_contract_validated = True
 
 
 def _accumulate_main_grad(weights, is_first_microbatch):
@@ -369,13 +401,16 @@ def install_mate_grouped_gemm() -> None:
         is_first_microbatch=None,
         fine_grained_offload=False,
     ):
-        unsupported_reason = _unsupported_reason(
+        weights = _weights(self)
+        unsupported_reason = _dynamic_unsupported_reason(
             self, inp, m_splits, fine_grained_offload
         )
         if unsupported_reason is not None:
             raise RuntimeError(
                 f"MATE GroupedLinear unsupported: {unsupported_reason}"
             )
+
+        _ensure_weight_contract(self, weights)
 
         host_splits = tuple(m_splits)
         counts_device = torch.tensor(host_splits, dtype=torch.int32, device=inp.device)
@@ -393,7 +428,7 @@ def install_mate_grouped_gemm() -> None:
                 host_splits,
                 is_first_microbatch,
                 self.wgrad_store,
-                *_weights(self),
+                *weights,
             )
 
     GroupedLinear.__init__ = patched_init

@@ -29,6 +29,15 @@ the caller's existing `PYTHONPATH` through its nested SSH launch; this locates
 Python dependencies but is not an optimization switch. The adapter pins MATE
 source version `0.2.7` and backend `mubin` in code.
 
+Install the validated MATE source and expose it to every rank:
+
+```bash
+git clone https://github.com/MooreThreads/mate.git --recursive
+git -C mate checkout e5d73e914fcb30aab915a12fae146d9d26357908
+git -C mate submodule update --init --recursive
+export PYTHONPATH="/path/to/mate:${PYTHONPATH:-}"
+```
+
 ## Validation
 
 The validation used upstream baseline
