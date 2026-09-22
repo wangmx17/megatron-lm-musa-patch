@@ -184,6 +184,7 @@ fi
 
 PIDS=()
 COUNT=0
+printf -v REMOTE_PYTHONPATH_Q '%q' "${PYTHONPATH:-}"
 for host in "${hostlist[@]}"; do
   HOST_LOG="${LOG_FILE}.${COUNT}.${host}"
   echo "Launching node_rank=${COUNT} host=${host} log=${HOST_LOG}"
@@ -192,6 +193,7 @@ for host in "${hostlist[@]}"; do
 GPUS_PER_NODE='${GPUS_PER_NODE}' \
 MEGATRON_PATH='${MEGATRON_PATH}' \
 PRETRAIN_FILE='${PRETRAIN_FILE}' \
+PYTHONPATH=${REMOTE_PYTHONPATH_Q} \
 CP_SIZE='${CP_SIZE}' EP_SIZE='${EP_SIZE}' EXPERT_TP_SIZE='1' \
 TRAIN_ITERS='${TRAIN_ITERS}' LR_WARMUP_ITERS='${LR_WARMUP_ITERS}' \
 SAVE_INTERVAL='${SAVE_INTERVAL}' SEQ_LENGTH='${SEQ_LENGTH}' \
