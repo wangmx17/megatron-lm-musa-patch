@@ -393,6 +393,10 @@ LOGGING_ARGS=(
 if [[ "${NO_SAVE:-0}" -ne 1 ]]; then
   LOGGING_ARGS+=(--save "${CHECKPOINT_PATH}")
 fi
+# EXIT_INTERVAL: stop early while keeping the TRAIN_ITERS-sized dataset/LR schedule.
+if [[ -n "${EXIT_INTERVAL:-}" ]]; then
+  LOGGING_ARGS+=(--exit-interval "${EXIT_INTERVAL}")
+fi
 TRANSFORMER_ENGINE_ARGS=(--transformer-impl "${TRANSFORMER_IMPL:-transformer_engine}")
 
 # ---- Experimental optimization toggles (opt-ablation copy; stack via ENABLE_*) ----
