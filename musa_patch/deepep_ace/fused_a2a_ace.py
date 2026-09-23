@@ -8,12 +8,15 @@ the EP-global or top-k-expanded token count.
 
 from __future__ import annotations
 
+import functools
 import importlib.metadata
 import os
 
 import torch
 import megatron.core.transformer.moe.fused_a2a as fused_a2a
 from megatron.core.transformer.moe.fused_a2a import Buffer, FusedDispatch
+
+from .buffer_sizing import select_ace_nvl_bytes
 
 
 _BUFFER_LOGGED = False
@@ -23,6 +26,7 @@ _DISPATCH_CACHE_LOGGED = False
 _RUNTIME_LOCAL_TOKEN_CAPACITY = None
 _RUNTIME_HIDDEN_SIZE = None
 _RUNTIME_TOPK = None
+_RUNTIME_NUM_EXPERTS = None
 _RUNTIME_TOKEN_SOURCE = None
 
 
@@ -34,6 +38,14 @@ def _env_int(name: str, default: int) -> int:
         return int(value)
     except ValueError as exc:
         raise ValueError(f"{name} must be an integer, got {value!r}") from exc
+
+
+@functools.lru_cache(maxsize=1)
+def _installed_deep_ep_version() -> str:
+    try:
+        return importlib.metadata.version("deep-ep")
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown"
 
 
 _ORIGINAL_FUSED_DISPATCH_FORWARD = FusedDispatch.forward
@@ -51,6 +63,7 @@ def _fused_dispatch_forward(
 ):
     """Capture the real local input geometry before get_buffer is called."""
     global _RUNTIME_LOCAL_TOKEN_CAPACITY, _RUNTIME_HIDDEN_SIZE, _RUNTIME_TOPK
+    global _RUNTIME_NUM_EXPERTS
     global _RUNTIME_TOKEN_SOURCE
     global _DISPATCH_CACHE_LOGGED
 
@@ -87,6 +100,7 @@ def _fused_dispatch_forward(
     _RUNTIME_LOCAL_TOKEN_CAPACITY = configured_tokens or local_tokens
     _RUNTIME_HIDDEN_SIZE = configured_hidden or hidden_size
     _RUNTIME_TOPK = configured_topk or actual_topk
+    _RUNTIME_NUM_EXPERTS = int(num_experts)
     _RUNTIME_TOKEN_SOURCE = "configured-local" if configured_tokens else "dispatch-x"
     return _ORIGINAL_FUSED_DISPATCH_FORWARD(
         ctx,
@@ -130,7 +144,17 @@ def get_buffer(group, hidden_bytes: int):
     token_num = _RUNTIME_LOCAL_TOKEN_CAPACITY
     hidden_size = _RUNTIME_HIDDEN_SIZE
     num_topk = _RUNTIME_TOPK
+    num_experts = _RUNTIME_NUM_EXPERTS
     num_ace_buffers = max(_env_int("DEEPEP_ACE_NUM_BUFFERS", 1), 1)
+    compact_nvl = _env_int("DEEPEP_ACE_COMPACT_NVL_BUFFER", 0)
+    version = _installed_deep_ep_version()
+    num_nvl_bytes, nvl_mode = select_ace_nvl_bytes(
+        num_nvl_bytes,
+        compact_nvl,
+        group.size(),
+        num_experts,
+        version,
+    )
     buffer = fused_a2a._buffer
     need_new = (
         buffer is None
@@ -141,7 +165,9 @@ def get_buffer(group, hidden_bytes: int):
         or getattr(buffer, "_musa_ace_token_num", 0) < token_num
         or getattr(buffer, "_musa_ace_hidden_size", 0) != hidden_size
         or getattr(buffer, "_musa_ace_num_topk", 0) != num_topk
+        or getattr(buffer, "_musa_ace_num_experts", 0) != num_experts
         or getattr(buffer, "_musa_ace_num_buffers", 0) != num_ace_buffers
+        or getattr(buffer, "_musa_ace_nvl_mode", None) != nvl_mode
     )
     if need_new:
         fused_a2a._buffer = Buffer(
@@ -158,23 +184,21 @@ def get_buffer(group, hidden_bytes: int):
         buffer._musa_ace_token_num = token_num
         buffer._musa_ace_hidden_size = hidden_size
         buffer._musa_ace_num_topk = num_topk
+        buffer._musa_ace_num_experts = num_experts
         buffer._musa_ace_num_buffers = num_ace_buffers
+        buffer._musa_ace_nvl_mode = nvl_mode
 
     if not hasattr(buffer, "get_ace_combine_buffer"):
         raise RuntimeError("The installed DeepEP does not expose ACE combine buffers")
     if not _BUFFER_LOGGED and group.rank() == 0:
         _BUFFER_LOGGED = True
-        try:
-            version = importlib.metadata.version("deep-ep")
-        except importlib.metadata.PackageNotFoundError:
-            version = "unknown"
         print(
             "[deepep_ace] Buffer ready "
             f"version={version} local_token_capacity={token_num} "
             f"token_source={_RUNTIME_TOKEN_SOURCE} "
             f"combine_capacity={token_num * num_topk} hidden={hidden_size} "
-            f"topk={num_topk} buffers={num_ace_buffers} group_size={group.size()} "
-            f"nvl_bytes={num_nvl_bytes}",
+            f"topk={num_topk} experts={num_experts} buffers={num_ace_buffers} "
+            f"group_size={group.size()} nvl_mode={nvl_mode} nvl_bytes={num_nvl_bytes}",
             flush=True,
         )
     return buffer
