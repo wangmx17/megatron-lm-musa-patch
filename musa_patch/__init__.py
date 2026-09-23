@@ -7,6 +7,12 @@ import torch_musa
 from contextlib import nullcontext
 
 def patch_before_import_megatron():
+    enable_fc1_wgrad = os.getenv("ENABLE_ACE_FC1_WGRAD_OVERLAP", "0")
+    if enable_fc1_wgrad not in ("0", "1"):
+        raise ValueError("ENABLE_ACE_FC1_WGRAD_OVERLAP must be 0 or 1")
+    if enable_fc1_wgrad == "1" and os.getenv("USE_DEEPEP_ACE", "0") != "1":
+        raise RuntimeError("ENABLE_ACE_FC1_WGRAD_OVERLAP=1 requires USE_DEEPEP_ACE=1")
+
     # MATE must register its MUSA/DLPack side before Transformer Engine imports
     # TVM-FFI bindings. This branch intentionally uses the MATE path by default.
     from .mate_grouped_gemm import load_mate_gemm
