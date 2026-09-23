@@ -37,6 +37,8 @@ export ENABLE_RMSNORM_FUSION=${ENABLE_RMSNORM_FUSION:-0}
 export MOE_DEEPEP_NUM_SMS=${MOE_DEEPEP_NUM_SMS:-56}
 export MUON_BATCH_NS=${MUON_BATCH_NS:-1}
 export MUON_BATCH_NS_MAX_B=${MUON_BATCH_NS_MAX_B:-32}
+export MUON_DP1_LOW_MEMORY=${MUON_DP1_LOW_MEMORY:-0}
+export DEEPEP_ACE_COMPACT_NVL_BUFFER=${DEEPEP_ACE_COMPACT_NVL_BUFFER:-0}
 export MUSA_FA_AUX_FUSION=${MUSA_FA_AUX_FUSION:-0}
 # require: fail fast unless the installed TE has the native THD LSE fp32 kernel.
 # Set disable to force the old fp32->fp64->fp32 compatibility chain for A/B.
@@ -84,6 +86,16 @@ export PROFILER_PROFILE_MEMORY=${PROFILER_PROFILE_MEMORY:-0}
 export PROFILER_WITH_STACK=${PROFILER_WITH_STACK:-1}
 export PROFILER_WITH_MODULES=${PROFILER_WITH_MODULES:-0}
 
+for binary_flag in ENABLE_DEEPEP DEEPEP_ACE_COMPACT_NVL_BUFFER MUON_DP1_LOW_MEMORY; do
+  if [[ "${!binary_flag}" != "0" && "${!binary_flag}" != "1" ]]; then
+    echo "Error: ${binary_flag} must be 0 or 1, got ${!binary_flag}."
+    exit 2
+  fi
+done
+if [[ "${DEEPEP_ACE_COMPACT_NVL_BUFFER}" == "1" && "${ENABLE_DEEPEP}" != "1" ]]; then
+  echo "Error: DEEPEP_ACE_COMPACT_NVL_BUFFER=1 requires ENABLE_DEEPEP=1 (ACE)."
+  exit 2
+fi
 if (( WORLD_SIZE % (TP_SIZE * PP_SIZE * CP_SIZE) != 0 )); then
   echo "Error: WORLD_SIZE must be divisible by TP_SIZE*PP_SIZE*CP_SIZE."
   exit 1
@@ -109,6 +121,7 @@ check_dir() { [[ -d "$1" ]] && echo "OK dir  $1" || { echo "MISS dir  $1"; fail=
 cat <<CFG
 ================ MiniCPM5 16A3B S5000 launch ==================
 STACK:                 current branch (ACE=${ENABLE_DEEPEP}, bias-SwiGLU fusion on)
+ACE_COMPACT_NVL:       ${DEEPEP_ACE_COMPACT_NVL_BUFFER} (fixed_floor_bytes=1048576)
 WORK_HOME:             ${WORK_HOME}
 SCRIPT_FILE:           ${SCRIPT_FILE}
 PATCH_HOME:            ${PATCH_HOME}
@@ -129,6 +142,7 @@ ENABLE_SHARED_EXPERT_OVERLAP: ${ENABLE_SHARED_EXPERT_OVERLAP:-0}
 ENABLE_RMSNORM_FUSION: ${ENABLE_RMSNORM_FUSION:-0}
 MOE_DEEPEP_NUM_SMS:    ${MOE_DEEPEP_NUM_SMS:-unset}
 MUON_BATCH_NS:         ${MUON_BATCH_NS:-unset}
+MUON_DP1_LOW_MEMORY:   ${MUON_DP1_LOW_MEMORY:-unset}
 MUSA_FA_AUX_FUSION:    ${MUSA_FA_AUX_FUSION:-unset}
 MUSA_TE_THD_LSE_FP32:  ${MUSA_TE_THD_LSE_FP32:-unset}
 NVTE_MUSA_THD_CP_CORRECTION_FUSION: ${NVTE_MUSA_THD_CP_CORRECTION_FUSION:-unset}
@@ -218,6 +232,8 @@ ENABLE_GRAD_ACCUM_FUSION='${ENABLE_GRAD_ACCUM_FUSION:-1}' \
 MOE_DEEPEP_NUM_SMS='${MOE_DEEPEP_NUM_SMS:-}' \
 MUON_BATCH_NS='${MUON_BATCH_NS:-}' \
 MUON_BATCH_NS_MAX_B='${MUON_BATCH_NS_MAX_B:-16}' \
+MUON_DP1_LOW_MEMORY='${MUON_DP1_LOW_MEMORY:-0}' \
+DEEPEP_ACE_COMPACT_NVL_BUFFER='${DEEPEP_ACE_COMPACT_NVL_BUFFER:-0}' \
 MUSA_FA_AUX_FUSION='${MUSA_FA_AUX_FUSION:-0}' \
 MUSA_TE_THD_LSE_FP32='${MUSA_TE_THD_LSE_FP32:-require}' \
 NVTE_MUSA_THD_CP_CORRECTION_FUSION='${NVTE_MUSA_THD_CP_CORRECTION_FUSION:-0}' \
