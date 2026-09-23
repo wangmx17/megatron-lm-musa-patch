@@ -1,28 +1,195 @@
 # Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
-"""Opt-in independent-expert Muon batching for the compatible Megatron Muon API.
+"""Opt-in independent-expert Muon batching for the stock Megatron Muon API.
 
-The base optimizer owns momentum, distributed reconstruction and update scaling.
-Only full, unsharded 2-D expert NS inputs are grouped by shape/dtype/device.
+This adapter intentionally owns the small compatibility layer needed by PR11 so
+that Megatron-LM does not need an out-of-tree ``muon.py`` modification.  The
+base optimizer still owns its parameter groups and distributed metadata.  Only
+full, unsharded 2-D expert NS inputs are grouped by shape/dtype/device.
 """
+import os
+
 import torch
 import torch.distributed as dist
 from megatron.core.optimizer.muon import (
     Muon as BaseMuon,
+    adjust_lr_wd_for_muon,
     normalize_range,
-    _zeropower_via_newtonschulz5_batched_impl,
+    zeropower_via_newtonschulz5,
 )
+
+
+def _read_env_flag(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(
+        f"{name} must be one of 0/1, false/true, no/yes, or off/on; got {value!r}"
+    )
+
+
+def _read_env_positive_int(name, default):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a positive integer; got {value!r}") from exc
+    if parsed <= 0:
+        raise ValueError(f"{name} must be a positive integer; got {value!r}")
+    return parsed
+
+
+def _zeropower_via_newtonschulz5_batched_impl(
+    matrices, steps, coefficient_type
+):
+    """Apply independent Newton--Schulz iterations to equally shaped matrices."""
+    if matrices.dim() != 3:
+        raise ValueError(
+            "batched Newton--Schulz expects [batch, rows, cols], "
+            f"got shape={tuple(matrices.shape)}"
+        )
+    # Keep the coefficient source in Megatron so this adapter follows the exact
+    # simple/quintic/polar-express selection used by the base optimizer.
+    from megatron.core.optimizer.muon import _COEFFICIENT_SETS
+
+    coefficient_sets = _COEFFICIENT_SETS[coefficient_type]
+    x = matrices
+    transposed = matrices.size(-2) > matrices.size(-1)
+    if transposed:
+        x = x.transpose(-2, -1)
+    # Normalizing each matrix independently is required for numerical
+    # equivalence with the original per-parameter loop.
+    x = x / (torch.linalg.vector_norm(x, dim=(-2, -1), keepdim=True) + 1e-7)
+    for iteration in range(steps):
+        a, b, c = coefficient_sets[iteration % len(coefficient_sets)]
+        a_matrix = x @ x.transpose(-2, -1)
+        b_matrix = b * a_matrix + c * a_matrix @ a_matrix
+        x = a * x + b_matrix @ x
+    if transposed:
+        x = x.transpose(-2, -1)
+    return x
 
 
 class MuonExpertBatch(BaseMuon):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        required = ("batch_ns_requested", "batch_ns_max_b", "dp1_low_memory_active",
-                    "_prepare_muon_input", "_compute_muon_update", "_apply_muon_update")
-        if any(not hasattr(self, name) for name in required):
-            raise RuntimeError("TE expert batching requires the compatible Megatron Muon API")
-        if self.batch_ns_max_b < 1:
-            raise ValueError("MUON_BATCH_NS_MAX_B must be positive")
+        self.batch_ns_requested = _read_env_flag("MUON_BATCH_NS", default=False)
+        self.batch_ns_max_b = _read_env_positive_int(
+            "MUON_BATCH_NS_MAX_B", default=32
+        )
+        if _read_env_flag("MUON_DP1_LOW_MEMORY", default=False):
+            raise RuntimeError(
+                "MUON_DP1_LOW_MEMORY is not supported together with "
+                "MUON_TE_EXPERT_BATCH_NS; the validated 1000-step stack uses "
+                "MUON_DP1_LOW_MEMORY=0"
+            )
+        self.dp1_low_memory_active = False
+        self.dist_world_size = 1
+        self.tp_world_size = 1
+        self.tp_rank = 0
         self.te_expert_batch_ns_observed = set()
+
+    def enable_distributed_mode(
+        self, global_buffer_sizes, dist_group, tp_group, dist_metas
+    ):
+        """Preserve base setup and retain the topology needed by the adapter."""
+        super().enable_distributed_mode(
+            global_buffer_sizes, dist_group, tp_group, dist_metas
+        )
+        self.dist_world_size = dist.get_world_size(dist_group)
+        self.tp_world_size = dist.get_world_size(tp_group)
+        self.tp_rank = dist.get_rank(tp_group)
+
+    def _prepare_muon_input(self, param, momentum, nesterov):
+        """Update FP32 momentum and materialize one BF16 NS input."""
+        grad = param.grad
+        if grad is None:
+            raise RuntimeError("Muon parameter is missing its gradient")
+        if not self.distributed_mode and grad.dim() != 2:
+            raise ValueError(
+                "non-distributed Muon parameters must be 2-D, "
+                f"got shape={tuple(grad.shape)}"
+            )
+        state = self.state[param]
+        if "exp_avg" not in state:
+            state["exp_avg"] = torch.zeros_like(grad)
+        momentum_buffer = state["exp_avg"]
+        momentum_buffer.mul_(momentum).add_(grad)
+        ns_input = (
+            grad.add(momentum_buffer, alpha=momentum)
+            if nesterov
+            else momentum_buffer
+        )
+        return ns_input.bfloat16()
+
+    def _compute_muon_update(self, param, ns_input, ns_steps):
+        """Preserve the base Muon TP, QKV and distributed-shard semantics."""
+        tp_split_dim = -1
+        dist_meta = None
+        if self.distributed_mode:
+            dist_meta = self.dist_metas[param]
+            tp_split_dim = dist_meta.tp_split_dim
+
+        if tp_split_dim != -1:
+            ns_input_shards = [
+                torch.empty_like(ns_input) for _ in range(self.tp_world_size)
+            ]
+            dist.all_gather(ns_input_shards, ns_input, self.tp_group)
+            ns_input = torch.cat(ns_input_shards, dim=tp_split_dim)
+
+        scale_shape = ns_input.shape
+        if self.muon_split_qkv and getattr(param, "is_qkv", False):
+            num_query_groups = ns_input.shape[0] // sum(self.qkv_split_shapes)
+            qkv_grads = torch.split(
+                ns_input.view(
+                    num_query_groups, sum(self.qkv_split_shapes), -1
+                ),
+                self.qkv_split_shapes,
+                dim=1,
+            )
+            qkv_grads = [
+                grad.reshape(-1, ns_input.shape[-1]) for grad in qkv_grads
+            ]
+            qkv_grads = [
+                zeropower_via_newtonschulz5(
+                    grad,
+                    steps=ns_steps,
+                    coefficient_type=self.muon_coefficient_type,
+                ).view(num_query_groups, -1, ns_input.shape[-1])
+                for grad in qkv_grads
+            ]
+            update = torch.cat(qkv_grads, dim=1).view(ns_input.shape)
+        else:
+            update = zeropower_via_newtonschulz5(
+                ns_input,
+                steps=ns_steps,
+                coefficient_type=self.muon_coefficient_type,
+            )
+
+        if tp_split_dim != -1:
+            update = update.chunk(self.tp_world_size, dim=tp_split_dim)[self.tp_rank]
+
+        if self.distributed_mode:
+            local_range = normalize_range(
+                dist_meta.local_range, dist_meta.global_range[0]
+            )
+            update = update.reshape(-1)[local_range[0] : local_range[1]]
+        return update, scale_shape
+
+    def _apply_muon_update(self, param, update, scale_shape, group):
+        """Apply the same weight decay and Muon learning-rate scaling as Megatron."""
+        lr = group["lr"]
+        adjusted_lr = adjust_lr_wd_for_muon(
+            lr, group["matched_adamw_rms"], scale_shape
+        )
+        param.data.mul_(1 - lr * group["weight_decay"])
+        param.data.add_(update, alpha=-adjusted_lr)
 
     def _can_batch_te_expert_param(self, param, ns_input, group):
         """Return true only for the exact DP1 expert path validated by this experiment."""
@@ -89,19 +256,17 @@ class MuonExpertBatch(BaseMuon):
         dtype = torch.bfloat16
         ns_inputs = {}
 
-        if self.dp1_low_memory_active:
-            self._step_muon_dp1_low_memory()
-        else:
-            # Legacy path: prepare every Muon parameter before distributed reconstruction.
-            for group in self.param_groups:
-                if not group.get("use_muon", False):
-                    continue
-                for param in group["params"]:
-                    ns_inputs[param] = self._prepare_muon_input(
-                        param, group["momentum"], group["nesterov"]
-                    )
+        # Prepare every Muon parameter before distributed reconstruction, matching
+        # the original optimizer order used by the validated 1000-step run.
+        for group in self.param_groups:
+            if not group.get("use_muon", False):
+                continue
+            for param in group["params"]:
+                ns_inputs[param] = self._prepare_muon_input(
+                    param, group["momentum"], group["nesterov"]
+                )
 
-        if self.distributed_mode and not self.dp1_low_memory_active:
+        if self.distributed_mode:
             if ns_inputs:
                 device = next(iter(ns_inputs)).device
             else:
@@ -138,19 +303,18 @@ class MuonExpertBatch(BaseMuon):
                     global_range[0] - offset : global_range[1] - offset
                 ].view(dist_meta.shape)
 
-        if not self.dp1_low_memory_active:
-            for group in self.param_groups:
-                if not group.get('use_muon', False):
-                    continue
-                group['step'] = group.get('step', 0) + 1
-                if self.batch_ns_requested and group.get("is_expert_parallel", False):
-                    self._apply_te_expert_batches(group, group["params"], ns_inputs)
-                else:
-                    for param in group["params"]:
-                        update, scale_shape = self._compute_muon_update(
-                            param, ns_inputs[param], group["ns_steps"]
-                        )
-                        self._apply_muon_update(param, update, scale_shape, group)
+        for group in self.param_groups:
+            if not group.get('use_muon', False):
+                continue
+            group['step'] = group.get('step', 0) + 1
+            if self.batch_ns_requested and group.get("is_expert_parallel", False):
+                self._apply_te_expert_batches(group, group["params"], ns_inputs)
+            else:
+                for param in group["params"]:
+                    update, scale_shape = self._compute_muon_update(
+                        param, ns_inputs[param], group["ns_steps"]
+                    )
+                    self._apply_muon_update(param, update, scale_shape, group)
 
         # use adam for other params
         for group in self.param_groups:

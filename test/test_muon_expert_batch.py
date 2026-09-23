@@ -1,4 +1,4 @@
-"""Compare the adapter against the actual compatible Megatron Muon source.
+"""Compare the self-contained adapter against an unmodified Megatron Muon.
 
 Set MEGATRON_MUON_SOURCE to its muon.py; optionally MUON_TEST_DEVICE=musa.
 This checks complete tiny-optimizer updates, not model convergence.
@@ -21,20 +21,41 @@ def load(name, path):
 
 source = os.environ.get('MEGATRON_MUON_SOURCE')
 if not source:
-    raise RuntimeError('Set MEGATRON_MUON_SOURCE to the compatible Megatron muon.py')
+    raise RuntimeError('Set MEGATRON_MUON_SOURCE to the stock Megatron muon.py')
 base = load('megatron.core.optimizer.muon', source)
+os.environ['MUON_BATCH_NS'] = '1'
+os.environ['MUON_BATCH_NS_MAX_B'] = '8'
+os.environ['MUON_DP1_LOW_MEMORY'] = '0'
+os.environ['MUON_FUSED_POINTWISE'] = '0'
 candidate = load('muon_expert_batch', Path(__file__).resolve().parents[1] / 'musa_patch/muon_expert_batch.py')
 device = os.environ.get('MUON_TEST_DEVICE', 'cpu')
 if device == 'musa':
     import torch_musa
     torch.musa.set_device(0)
-os.environ['MUON_BATCH_NS'] = '1'
-os.environ['MUON_BATCH_NS_MAX_B'] = '8'
-os.environ['MUON_DP1_LOW_MEMORY'] = '0'
-os.environ['MUON_FUSED_POINTWISE'] = '0'
+    # The production patch maps torch.cuda.current_device to the MUSA backend.
+    torch.cuda.current_device = torch.musa.current_device
+else:
+    # The stock v0.16 Muon queries current_device even when distributed mode is
+    # disabled; the returned value is unused in that branch.
+    torch.cuda.current_device = lambda: torch.device('cpu')
 
 
 class MuonTests(unittest.TestCase):
+    def test_batched_kernel_matches_per_parameter_kernel(self):
+        torch.manual_seed(17)
+        for shape in ((8, 16), (16, 8)):
+            matrices = torch.randn((4, *shape), device=device, dtype=torch.bfloat16)
+            expected = torch.stack([
+                base.zeropower_via_newtonschulz5(
+                    matrix, steps=5, coefficient_type='quintic'
+                )
+                for matrix in matrices
+            ])
+            actual = candidate._zeropower_via_newtonschulz5_batched_impl(
+                matrices, steps=5, coefficient_type='quintic'
+            )
+            torch.testing.assert_close(actual, expected, rtol=1e-4, atol=1e-5)
+
     def test_three_complete_steps_mixed_shapes_and_adam(self):
         torch.manual_seed(71)
         shapes = [(8, 16)] * 9 + [(16, 8)] * 2 + [(4,)]
@@ -61,6 +82,21 @@ class MuonTests(unittest.TestCase):
                     torch.testing.assert_close(oa.state[x][key], ob.state[y][key], rtol=0, atol=0)
             print('step', step+1, 'max_parameter_abs_error', max(errors), flush=True)
         self.assertTrue(ob.te_expert_batch_ns_observed)
+
+    def test_disabled_batch_switch_uses_fallback(self):
+        old_value = os.environ['MUON_BATCH_NS']
+        os.environ['MUON_BATCH_NS'] = '0'
+        try:
+            p = torch.nn.Parameter(torch.randn((8, 16), device=device))
+            optimizer = candidate.MuonExpertBatch([
+                dict(params=[p], use_muon=True, is_expert_parallel=True)
+            ])
+            p.grad = torch.randn_like(p)
+            optimizer.step()
+            self.assertFalse(optimizer.batch_ns_requested)
+            self.assertFalse(optimizer.te_expert_batch_ns_observed)
+        finally:
+            os.environ['MUON_BATCH_NS'] = old_value
 
     def test_distributed_eligibility_guards(self):
         p = torch.nn.Parameter(torch.zeros(8, 16, device=device))
