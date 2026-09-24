@@ -63,10 +63,13 @@ run_training_on_this_node() {
   export NVTE_BATCH_MHA_P2P_COMM=${NVTE_BATCH_MHA_P2P_COMM:-1}
   export MUSA_CP_FORWARD_BATCH_OVERLAP=${MUSA_CP_FORWARD_BATCH_OVERLAP:-0}
   export MUSA_CP_BACKWARD_BATCH_OVERLAP=${MUSA_CP_BACKWARD_BATCH_OVERLAP:-1}
-  # The collectives left on the critical path run ~10% faster on 32 channels
-  # than on 16, with no measurable change to attention.
-  export MCCL_MIN_NCHANNELS=${MCCL_MIN_NCHANNELS:-32}
-  export MCCL_MAX_NCHANNELS=${MCCL_MAX_NCHANNELS:-32}
+  # 32 channels only pay off for the CP-ring SendRecv. Collectives stay at 16:
+  # 32 collective channels add ~4.5GB of MCCL buffers per rank and OOM the
+  # cross-entropy FP32 workspace at step 10.
+  export MCCL_MIN_NCHANNELS=${MCCL_MIN_NCHANNELS:-16}
+  export MCCL_MAX_NCHANNELS=${MCCL_MAX_NCHANNELS:-16}
+  export MCCL_MIN_P2P_NCHANNELS=${MCCL_MIN_P2P_NCHANNELS:-32}
+  export MCCL_MAX_P2P_NCHANNELS=${MCCL_MAX_P2P_NCHANNELS:-32}
   export MCCL_BUFFSIZE=${MCCL_BUFFSIZE:-16777216}
   export PYTHONDONTWRITEBYTECODE=1 MEGATRON_LOG_RUNTIME_PATHS=1
 
