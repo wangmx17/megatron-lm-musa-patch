@@ -91,6 +91,26 @@ export PROFILER_PROFILE_MEMORY=${PROFILER_PROFILE_MEMORY:-0}
 export PROFILER_WITH_STACK=${PROFILER_WITH_STACK:-1}
 export PROFILER_WITH_MODULES=${PROFILER_WITH_MODULES:-0}
 
+export ENABLE_DEEPEP_FC1_WGRAD_OVERLAP=${ENABLE_DEEPEP_FC1_WGRAD_OVERLAP:-0}
+case "$ENABLE_DEEPEP_FC1_WGRAD_OVERLAP" in
+  0|1) ;;
+  *) echo 'Error: ENABLE_DEEPEP_FC1_WGRAD_OVERLAP must be 0 or 1.'; exit 2 ;;
+esac
+# An explicit override must reach SSH-launched ranks. If unset, preserve the
+# existing remote environment and train script defaults.
+DEEPEP_ACE_ENV=""
+if [[ -n "${USE_DEEPEP_ACE+x}" ]]; then
+  case "$USE_DEEPEP_ACE" in
+    0|1) DEEPEP_ACE_ENV="USE_DEEPEP_ACE='$USE_DEEPEP_ACE'" ;;
+    *) echo 'Error: USE_DEEPEP_ACE must be 0 or 1.'; exit 2 ;;
+  esac
+fi
+if [[ "$ENABLE_DEEPEP_FC1_WGRAD_OVERLAP" == 1 ]] && \
+   [[ "${ENABLE_DEEPEP:-0}" != 1 || "${USE_DEEPEP_ACE:-unset}" != 0 ]]; then
+  echo 'Error: ordinary DeepEP wgrad overlap requires ENABLE_DEEPEP=1 and explicit USE_DEEPEP_ACE=0.'
+  exit 2
+fi
+
 if (( WORLD_SIZE % (TP_SIZE * PP_SIZE * CP_SIZE) != 0 )); then
   echo "Error: WORLD_SIZE must be divisible by TP_SIZE*PP_SIZE*CP_SIZE."
   exit 1
@@ -241,6 +261,8 @@ MUSA_FUSED_ROUTE_CONVERSION='${MUSA_FUSED_ROUTE_CONVERSION:-1}' \
 NVTE_BATCH_MHA_P2P_COMM='${NVTE_BATCH_MHA_P2P_COMM:-1}' \
 MUSA_CP_FORWARD_BATCH_OVERLAP='${MUSA_CP_FORWARD_BATCH_OVERLAP:-1}' \
 MUSA_CP_BACKWARD_BATCH_OVERLAP='${MUSA_CP_BACKWARD_BATCH_OVERLAP:-1}' \
+${DEEPEP_ACE_ENV} \
+ENABLE_DEEPEP_FC1_WGRAD_OVERLAP='${ENABLE_DEEPEP_FC1_WGRAD_OVERLAP:-0}' \
 MUSA_FA_AUX_FUSION='${MUSA_FA_AUX_FUSION:-0}' \
 MUSA_TE_THD_LSE_FP32='${MUSA_TE_THD_LSE_FP32:-disable}' \
 NVTE_MUSA_THD_CP_CORRECTION_FUSION='${NVTE_MUSA_THD_CP_CORRECTION_FUSION:-0}' \
