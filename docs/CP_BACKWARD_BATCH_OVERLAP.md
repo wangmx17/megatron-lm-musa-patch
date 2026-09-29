@@ -1,6 +1,6 @@
 # CP 反向 batched P2P：原理与验证
 
-> 已完成首轮A/B、反序复测、最终模块10-step及最终文件的逐元素梯度检查。默认关闭，未验证前后向两项同时开启或长期训练。
+> 已完成首轮A/B、反序复测、最终模块10-step及最终文件的逐元素梯度检查。模块入口仍由环境变量控制；MiniCPM5默认launcher仅在已验证的单机CP4配置中同时开启前后向。累计最佳栈另完成6/6短测，但尚未证明长期训练稳定性。
 
 ## 修改解决什么问题
 
@@ -26,10 +26,9 @@ MCCL 的 wait 在当前已核对实现中通过完成 event 建立当前流依�
 ## 范围与入口
 
 - `musa_patch/cp_backward_batch_overlap.py`：精确源码保护、单方向函数变换、运行时配置保护。
-- `musa_patch/__init__.py`：安装入口，默认关闭。
-- 开启：`MUSA_CP_BACKWARD_BATCH_OVERLAP=1 NVTE_BATCH_MHA_P2P_COMM=1`。
-- 目标分支已包含独立的 forward 方向适配；前后向同时开启尚未验证，因此安装器显式拒绝
-  `MUSA_CP_FORWARD_BATCH_OVERLAP=1` 与本开关同时启用。
+- `musa_patch/__init__.py`：安装入口；通用模块仍由环境变量 opt-in，MiniCPM5 固定 CP4 launcher 默认传入开启值。
+- 开启：`MUSA_CP_BACKWARD_BATCH_OVERLAP=1 NVTE_BATCH_MHA_P2P_COMM=1`。MiniCPM5默认launcher在固定CP4最佳栈中已设置这两个值；其它拓扑需显式关闭或重新验证。
+- 目标分支包含 forward 方向适配，并已移除早期的互斥保护。2026-09-28累计最佳栈同时开启前后向，完成6/6短测；这只覆盖固定BF16/THD/CP4 shape，不外推为长期或任意配置验证。
 - 仅进程内替换 Python 静态函数，不写入安装的 TE 文件；新进程取消开关即可恢复。
 - 已验证范围：MUSA、BF16、THD、CP4、Q shape=(16384,16,128)，零 dropout、padding_causal、无 attention bias、非 fused-attention/非 FP8。
 - TE attention.py SHA256 必须为 `510afa9a3da138697c8c16538efabcb22b8ec5dacaadd6aef5bdd02ff9b510c1`。未知源码显式报错，不静默应用补丁。
@@ -87,7 +86,7 @@ worker31012 / megatron_test，单机8卡S5000；TP2/PP1/CP4/EP8/DP1，seq65536�
 
 `NVTE_BATCH_MHA_P2P_COMM=0`的普通异步版本不予推荐：前向未完成首步，出现DeepEP recv timeout；反向8/10后出现segfault/MUSA错误。不能用其部分step计算收益。错误发生位置不等价于已经证明底层根因。
 
-成组版本短跑成功不能推导所有长跑都稳定；保持默认关闭，建议在实际部署配置继续长时间验证。
+成组版本短跑成功不能推导所有长跑都稳定；MiniCPM5 固定 CP4 launcher 默认开启，但其它入口和拓扑保持 opt-in，实际部署仍需继续长时间验证。
 
 ## 原始证据位置
 
